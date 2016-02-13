@@ -21,4 +21,6 @@ source/src/ac_server
 source/src/cube.h.gch
 source/src/Makefile_local
 clientlog*.txt
-
+CMakefiles/
+CMakeCache.txt
+cmake_install.cmake
