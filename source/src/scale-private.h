@@ -1,3 +1,7 @@
+/**
+ * THIS FILE SHOULD ONLY BE INCLUDED AND MANAGED FROM THE TEXTURE.CPP
+ */
+
 static void FUNCNAME(halvetexture)(uchar *src, uint sw, uint sh, uchar *dst)
 {
     uint stride = sw*BPP;

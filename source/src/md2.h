@@ -1,3 +1,6 @@
+#ifndef MD2_H
+#define MD2_H
+
 struct md2;
 
 md2 *loadingmd2 = 0;
@@ -333,3 +336,6 @@ void md2emit(char *tag, int *type, int *arg1, int *arg2)
 COMMAND(md2anim, "siif");
 COMMAND(md2tag, "sssss");
 COMMAND(md2emit, "siii");
+
+#endif	// MD2_H
+

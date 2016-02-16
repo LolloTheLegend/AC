@@ -1,3 +1,6 @@
+#ifndef VERTMODEL_H
+#define VERTMODEL_H
+
 VARP(dynshadowsize, 4, 5, 8);
 VARP(aadynshadow, 0, 2, 3);
 VARP(saveshadows, 0, 1, 1);
@@ -1315,4 +1318,7 @@ VARF(mdldyncache, 1, 2, 32, vertmodel::dynalloc.resize(mdldyncache<<20));
 VARF(mdlstatcache, 1, 1, 32, vertmodel::statalloc.resize(mdlstatcache<<20));
 
 modelcache vertmodel::dynalloc(mdldyncache<<20), vertmodel::statalloc(mdlstatcache<<20);
+
+
+#endif	// VERTMODEL_H
 

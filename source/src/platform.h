@@ -1,3 +1,6 @@
+#ifndef PLATFORM_H
+#define PLATFORM_H
+
 #ifdef __GNUC__
     #ifdef _FORTIFY_SOURCE
         #undef _FORTIFY_SOURCE
@@ -78,3 +81,6 @@
 #ifndef STANDALONE
 #include "curl/curl.h"
 #endif
+
+#endif	// PLATFORM_H
+

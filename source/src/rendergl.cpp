@@ -190,8 +190,8 @@ void disablepolygonoffset(GLenum type, bool restore)
     }
 }
 
-#define VARRAY_INTERNAL
-#include "varray.h"
+
+#include "varray-internal.h"
 
 void line(int x1, int y1, float z1, int x2, int y2, float z2)
 {

@@ -1,5 +1,5 @@
-#ifndef __CRYPTO_TOOLS_H__
-#define __CRYPTO_TOOLS_H__
+#ifndef CRYPTO_TOOLS_H
+#define CRYPTO_TOOLS_H
 #ifdef NULL
 #undef NULL
 #endif

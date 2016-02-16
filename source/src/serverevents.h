@@ -1,5 +1,8 @@
 // processing of server events
 
+#ifndef SERVEREVENTS_H
+#define SERVEREVENTS_H
+
 void processevent(client *c, explodeevent &e)
 {
     clientstate &gs = c->state;
@@ -189,4 +192,7 @@ void processevents()
         }
     }
 }
+
+
+#endif	// SERVEREVENTS_H
 

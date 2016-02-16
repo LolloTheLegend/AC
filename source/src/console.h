@@ -1,3 +1,6 @@
+#ifndef CONSOLE_H
+#define CONSOLE_H
+
 struct cline { char *line; int millis; };
 
 template<class LINE> struct consolebuffer
@@ -260,3 +263,6 @@ struct textinputbuffer_wip
 
 void savehistory();
 void loadhistory();
+
+#endif	// CONSOLE_H
+

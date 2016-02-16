@@ -1,3 +1,6 @@
+#ifndef MD3_H
+#define MD3_H
+
 struct md3;
 
 md3 *loadingmd3 = NULL;
@@ -306,3 +309,6 @@ COMMAND(md3skin, "ss");
 COMMAND(md3anim, "siif");
 COMMAND(md3link, "iis");
 COMMAND(md3emit, "siii");
+
+#endif	// MD3_H
+

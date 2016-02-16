@@ -1,4 +1,7 @@
 
+#ifndef WEAPON_H
+#define WEAPON_H
+
 class playerent;
 class bounceent;
 
@@ -195,4 +198,7 @@ struct knife : weapon
 
     int flashtime() const;
 };
+
+
+#endif	// WEAPON_H
 

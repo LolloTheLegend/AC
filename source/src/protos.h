@@ -1,5 +1,8 @@
 // protos for ALL external functions in cube...
 
+#ifndef PROTOS_H
+#define PROTOS_H
+
 #ifndef STANDALONE
 
 extern bool hasTE, hasMT, hasMDA, hasDRE, hasstencil, hasST2, hasSTW, hasSTS, hasAF;
@@ -1115,3 +1118,6 @@ struct sgray {
     int ds; // damage flag: outer, medium, center: SGSEGDMG_*
     vec rv; // ray vector
 };
+
+#endif	// PROTOS_H
+

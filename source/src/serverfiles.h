@@ -2,6 +2,9 @@
 
 // map management
 
+#ifndef SERVERFILES_H
+#define SERVERFILES_H
+
 #define SERVERMAP_PATH          "packages/maps/servermaps/"
 #define SERVERMAP_PATH_BUILTIN  "packages/maps/official/"
 #define SERVERMAP_PATH_INCOMING "packages/maps/servermaps/incoming/"
@@ -950,3 +953,6 @@ struct killmessagesfile : serverconfigfile
         }
     }
 };
+
+#endif	// SERVERFILES_H
+

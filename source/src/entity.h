@@ -1,3 +1,6 @@
+#ifndef ENTITY_H
+#define ENTITY_H
+
 enum                            // static entity types
 {
     NOTUSED = 0,                // entity slot not in use in map
@@ -671,3 +674,6 @@ struct package
     package() : name(NULL), type(-1), number(0), pending(false), source(NULL), curl(NULL) {}
 };
 #endif
+
+#endif	// ENTITY_H
+

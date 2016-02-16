@@ -1,5 +1,8 @@
 // server.h
 
+#ifndef SERVER_H
+#define SERVER_H
+
 #define gamemode smode   // allows the gamemode macros to work with the server mode
 
 #define SERVER_PROTOCOL_VERSION    (PROTOCOL_VERSION)    // server without any gameplay modification
@@ -500,3 +503,6 @@ const char *teamnames_s[TEAM_NUM+1] = {"CLA", "RVSF", "CSPC", "RSPC", "SPEC", "v
 // for both client and server
 // default messages are hardcoded !
 char killmessages[2][NUMGUNS][MAXKILLMSGLEN] = {{ "", "busted", "picked off", "peppered", "sprayed", "punctured", "shredded", "busted", "", "busted" }, { "slashed", "", "", "splattered", "", "headshot", "", "", "gibbed", "" }};
+
+#endif	// SERVER_H
+

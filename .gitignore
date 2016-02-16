@@ -24,5 +24,7 @@ clientlog*.txt
 /CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-client
-server
+/client
+/server
+/compile_commands.json
+/notes.txt

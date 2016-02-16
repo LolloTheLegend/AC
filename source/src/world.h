@@ -1,3 +1,6 @@
+#ifndef WORLD_H
+#define WORLD_H
+
 enum                            // block types, order matters!
 {
     SOLID = 0,                  // entirely solid cube [only specifies wtex]
@@ -105,4 +108,7 @@ struct block { int x, y, xs, ys, h; short p[5]; };
 // vertex array format
 
 struct vertex { float u, v, x, y, z; uchar r, g, b, a; };
+
+
+#endif	// WORLD_H
 

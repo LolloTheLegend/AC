@@ -1,5 +1,8 @@
 // code for running the server as a background process/daemon/service
 
+#ifndef SERVERCONTROLLER_H
+#define SERVERCONTROLLER_H
+
 struct servercontroller
 {
     virtual void start() = 0;
@@ -133,3 +136,6 @@ struct winservice : servercontroller
 winservice *winservice::callbacks::svc = (winservice *)NULL;
 
 #endif
+
+#endif	// SERVERCONTROLLER_H
+

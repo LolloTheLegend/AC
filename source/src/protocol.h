@@ -1,3 +1,6 @@
+#ifndef PROTOCOL_H
+#define PROTOCOL_H
+
 #define MAXCLIENTS 256                  // in a multiplayer game, can be arbitrarily changed
 #define DEFAULTCLIENTS 6
 #define MAXTRANS 5000                   // max amount of data to swallow in 1 go
@@ -167,4 +170,7 @@ enum
 #define FTXT__KICKBANREASON (FTXT_NOWHITE | FTXT_ALLOWBLANKS | FTXT_NOCOLOR | FTXT_TABTOBLANK)
 #define FTXT__FAVCATEGORY   (FTXT_NOWHITE | FTXT_ALLOWBLANKS | FTXT_NOCOLOR)
 #define FTXT__GLOBALNAME    (FTXT_NOWHITE | FTXT_NOCOLOR | FTXT_FILLBLANKS)
+
+
+#endif	// PROTOCOL_H
 

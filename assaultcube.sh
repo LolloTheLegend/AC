@@ -84,10 +84,10 @@ if [ -x "/sbin/ldconfig" ]; then
   fi
 fi
 
-if [ -x "${CUBE_DIR}/bin_unix/${SYSTEM_NAME}${MACHINE_NAME}client" ]; then
+if [ -x "${CUBE_DIR}/client" ]; then
   cd "${CUBE_DIR}"
-  exec "${CUBE_DIR}/bin_unix/${SYSTEM_NAME}${MACHINE_NAME}client" ${CUBE_OPTIONS} "$@"
-elif [ -e "${CUBE_DIR}/bin_unix/${SYSTEM_NAME}${MACHINE_NAME}client" ]; then
+  exec "${CUBE_DIR}/wdclient" ${CUBE_OPTIONS} "$@"
+elif [ -e "${CUBE_DIR}/client" ]; then
   echo "Insufficient permissons to run AssaultCube."
   echo "Please change (chmod) the AssaultCube client in the bin_unix folder to be readable/executable."
 else

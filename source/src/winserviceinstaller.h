@@ -1,4 +1,6 @@
 // minimal windows service installer
+#ifndef WINSERVICEINSTALLER_H
+#define WINSERVICEINSTALLER_H
 
 class winserviceinstaller
 {
@@ -52,3 +54,4 @@ public:
     }
 };
 
+#endif /* WINSERVICEINSTALLER_H */

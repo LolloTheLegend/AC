@@ -1,4 +1,7 @@
 //VAR(dbgts, 0, 0, 1);
+#ifndef TRISTRIP_H
+#define TRISTRIP_H
+
 const int dbgts = 0;
 VAR(tsswap, 0, 1, 1);
 
@@ -280,4 +283,7 @@ struct tristrip
 
 static inline uint hthash(const tristrip::edge &x) { return x.from^x.to; }
 static inline bool htcmp(const tristrip::edge &x, const tristrip::edge &y) { return x.from==y.from && x.to==y.to; }
+
+
+#endif	// TRISTRIP_H
 

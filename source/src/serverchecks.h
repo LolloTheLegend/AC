@@ -1,3 +1,6 @@
+#ifndef SERVERCHECKS_H
+#define SERVERCHECKS_H
+
 inline bool is_lagging(client *cl)
 {
     return ( cl->spj > 50 || cl->ping > 500 || cl->ldt > 80 ); // do not change this except if you really know what are you doing
@@ -632,4 +635,7 @@ inline int checkmessage(client *c, int type)
 #endif
     return type;
 }
+
+
+#endif	// SERVERCHECKS_H
 

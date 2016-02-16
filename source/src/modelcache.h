@@ -1,3 +1,6 @@
+#ifndef MODELCACHE_H
+#define MODELCACHE_H
+
 template<class T> struct modelcacheentry
 {
     typedef modelcacheentry<T> entry;
@@ -151,4 +154,7 @@ struct modelcache
         e->unlink();
     }
 };
+
+
+#endif	// MODELCACHE_H
 

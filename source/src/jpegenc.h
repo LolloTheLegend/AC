@@ -1,5 +1,5 @@
-#ifndef JPEGENC
-#define JPEGENC
+#ifndef JPEGENC_H
+#define JPEGENC_H
 
 // Toca: JPEG encoder, jpeglib independent  ***EXPERIMENTAL***
 // Based on work by Cristian Cuturicu

@@ -1,3 +1,7 @@
+# THIS FILE IS DEPRECATED FOR THIS VERSION OF ASSAULT CUBE
+# DON'T BUILD ASSAULTCUBE FROM THIS FILE.
+# PLEASE REFER TO THE CMAKELISTS.TXT FILE IN THE ROOT DIRECTORY OF THIS PROJECT
+
 CXX=clang++		# override from commandline or in Makefile_local
 ACDEBUG=no		# add ACDEBUG=yes to the commandline or to Makefile_local to compile debug binaries
 

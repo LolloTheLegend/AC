@@ -1,5 +1,5 @@
-#ifndef __CUBE_H__
-#define __CUBE_H__
+#ifndef CUBE_H
+#define CUBE_H
 
 // to "trick" i18n/gettext
 #define CC '\f'
