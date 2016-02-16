@@ -46,7 +46,7 @@ static void inithemisphere(int hres, int depth)
     loopi(hres)
     {
         float a = PI2*float(i)/hres;
-        hemiverts[heminumverts++] = vec(cosf(a), sinf(a), 0.0f);
+        hemiverts[heminumverts++] = vec(cos(a), sin(a), 0.0f);
     }
     loopi(hres) genface(depth, 0, i+1, 1+(i+1)%hres);
 }
@@ -58,7 +58,7 @@ GLuint createexpmodtex(int size, float minval)
     {
         float dx = 2*float(x)/(size-1) - 1, dy = 2*float(y)/(size-1) - 1;
         float z = max(0.0f, 1.0f - dx*dx - dy*dy);
-        if(minval) z = sqrtf(z);
+        if(minval) z = sqrt(z);
         else loopk(2) z *= z;
         *dst++ = uchar(max(z, minval)*255);
     }
@@ -560,7 +560,7 @@ void particle_emit(int type, int *args, int basetime, int seed, const vec &p)
 void particle_flash(int type, float scale, float angle, const vec &p)
 {
     angle *= RAD;
-    newparticle(p, vec(cosf(angle), sinf(angle), scale), 0, type);
+    newparticle(p, vec(cos(angle), sin(angle), scale), 0, type);
 }
 
 void particle_splash(int type, int num, int fade, const vec &p)

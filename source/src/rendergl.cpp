@@ -269,7 +269,7 @@ void circle(GLuint tex, float x, float y, float r, float tx, float ty, float tr,
     glVertex2f(x, y);
     loopi(subdiv+1)
     {
-        float c = cosf(2*M_PI*i/float(subdiv)), s = sinf(2*M_PI*i/float(subdiv));
+        float c = cos(2*M_PI*i/float(subdiv)), s = sin(2*M_PI*i/float(subdiv));
         glTexCoord2f(tx + tr*c, ty + tr*s);
         glVertex2f(x + r*c, y + r*s);
     }
@@ -408,7 +408,7 @@ void renderaboveheadicon(playerent *p)
 
 void rendercursor(int x, int y, int w)
 {
-    color c(1, 1, 1, (sinf(lastmillis/200.0f)+1.0f)/2.0f);
+    color c(1, 1, 1, (sin(lastmillis/200.0f)+1.0f)/2.0f);
     blendbox(x, y, x+w, y+FONTH, true, -1, &c);
 }
 
@@ -544,8 +544,8 @@ void recomputecamera()
                 // move camera into the desired direction using physics to avoid getting stuck in map geometry
                 if(player1->spectatemode == SM_FOLLOW3RD)
                 {
-                    followcam.vel.x = -(float)(cosf(RAD*(p->yaw-90)))*p->radius;
-                    followcam.vel.y = -(float)(sinf(RAD*(p->yaw-90)))*p->radius;
+                    followcam.vel.x = -(float)(cos(RAD*(p->yaw-90)))*p->radius;
+                    followcam.vel.y = -(float)(sin(RAD*(p->yaw-90)))*p->radius;
                     followcam.vel.z = p->eyeheight;
                 }
                 else followcam.vel.z = p->eyeheight/6.0f;
@@ -1015,8 +1015,8 @@ void gl_drawframe(int w, int h, float changelod, float curfps)
 
     if(underwater)
     {
-        fovy += sinf(lastmillis/1000.0f)*2.0f;
-        aspect += sinf(lastmillis/1000.0f+PI)*0.1f;
+        fovy += sin(lastmillis/1000.0f)*2.0f;
+        aspect += sin(lastmillis/1000.0f+PI)*0.1f;
         glFogfv(GL_FOG_COLOR, wfogc);
         glFogi(GL_FOG_START, 0);
         glFogi(GL_FOG_END, (fog+96)/8);

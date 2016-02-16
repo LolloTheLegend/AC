@@ -383,19 +383,19 @@ void moveplayer(physent *pl, int moveres, bool local, int curtime)
         const float friction = water ? 20.0f : (pl->onfloor || isfly ? 6.0f : (pl->onladder ? 1.5f : 30.0f));
         const float fpsfric = max(friction/curtime*20.0f, 1.0f);
 
-        d.x = (float)(move*cosf(RAD*(pl->yaw-90)));
-        d.y = (float)(move*sinf(RAD*(pl->yaw-90)));
+        d.x = (float)(move*cos(RAD*(pl->yaw-90)));
+        d.y = (float)(move*sin(RAD*(pl->yaw-90)));
         d.z = 0.0f;
 
         if(isfly || water)
         {
-            d.x *= (float)cosf(RAD*(pl->pitch));
-            d.y *= (float)cosf(RAD*(pl->pitch));
-            d.z = (float)(move*sinf(RAD*(pl->pitch)));
+            d.x *= (float)cos(RAD*(pl->pitch));
+            d.y *= (float)cos(RAD*(pl->pitch));
+            d.z = (float)(move*sin(RAD*(pl->pitch)));
         }
 
-        d.x += (float)(pl->strafe*cosf(RAD*(pl->yaw-180)));
-        d.y += (float)(pl->strafe*sinf(RAD*(pl->yaw-180)));
+        d.x += (float)(pl->strafe*cos(RAD*(pl->yaw-180)));
+        d.y += (float)(pl->strafe*sin(RAD*(pl->yaw-180)));
 
         pl->vel.mul(fpsfric-1.0f);   // slowly apply friction and direction to velocity, gives a smooth movement
         pl->vel.add(d);
@@ -933,7 +933,7 @@ void mousemove(int odx, int ody)
     extern float scopesensfunc;
     float cursens = sensitivity;
     if(senst) {cursens=testsens;}
-    if(mouseaccel && curtime && (dx || dy)) cursens += 0.02f * mouseaccel * sqrtf(dx*dx + dy*dy)/curtime;
+    if(mouseaccel && curtime && (dx || dy)) cursens += 0.02f * mouseaccel * sqrt(dx*dx + dy*dy)/curtime;
     if(scopesens==0 || !zooming(player1))
     {
         if(scopesensfeel)
@@ -994,23 +994,23 @@ void vecfromyawpitch(float yaw, float pitch, int move, int strafe, vec &m)
 {
     if(move)
     {
-        m.x = move*-sinf(RAD*yaw);
-        m.y = move*cosf(RAD*yaw);
+        m.x = move*-sin(RAD*yaw);
+        m.y = move*cos(RAD*yaw);
     }
     else m.x = m.y = 0;
 
     if(pitch)
     {
-        m.x *= cosf(RAD*pitch);
-        m.y *= cosf(RAD*pitch);
-        m.z = move*sinf(RAD*pitch);
+        m.x *= cos(RAD*pitch);
+        m.y *= cos(RAD*pitch);
+        m.z = move*sin(RAD*pitch);
     }
     else m.z = 0;
 
     if(strafe)
     {
-        m.x += strafe*cosf(RAD*yaw);
-        m.y += strafe*sinf(RAD*yaw);
+        m.x += strafe*cos(RAD*yaw);
+        m.y += strafe*sin(RAD*yaw);
     }
 }
 

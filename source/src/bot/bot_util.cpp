@@ -118,18 +118,18 @@ void AnglesToVectors(vec angles, vec &forward, vec &right, vec &up)
 
      // compute the sin and cosine of the pitch component
      angle = angles.x * degrees_to_radians;
-     sin_pitch = sinf (angle);
-     cos_pitch = cosf (angle);
+     sin_pitch = sin (angle);
+     cos_pitch = cos (angle);
 
      // compute the sin and cosine of the yaw component
      angle = angles.y * degrees_to_radians;
-     sin_yaw = sinf (angle);
-     cos_yaw = cosf (angle);
+     sin_yaw = sin (angle);
+     cos_yaw = cos (angle);
 
      // compute the sin and cosine of the roll component
      angle = angles.z * degrees_to_radians;
-     sin_roll = sinf (angle);
-     cos_roll = cosf (angle);
+     sin_roll = sin (angle);
+     cos_roll = cos (angle);
 
      // build the FORWARD vector
      forward.x = cos_pitch * cos_yaw;

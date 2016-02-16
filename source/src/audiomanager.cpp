@@ -650,8 +650,8 @@ void audiomanager::updateaudio()
 
     // listener
     vec o[2];
-    o[0].x = (float)(cosf(RAD*(camera1->yaw-90)));
-    o[0].y = (float)(sinf(RAD*(camera1->yaw-90)));
+    o[0].x = (float)(cos(RAD*(camera1->yaw-90)));
+    o[0].y = (float)(sin(RAD*(camera1->yaw-90)));
     o[0].z = 0.0f;
     o[1].x = o[1].y = 0.0f;
     o[1].z = -1.0f;

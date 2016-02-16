@@ -1333,7 +1333,7 @@ void gmenu::render()
         offset = menusel - (menusel%pagesize),
         mdisp = min(items.length(), pagesize),
         cdisp = min(items.length()-offset, pagesize);
-    mitem::whitepulse.alpha = (sinf(lastmillis/200.0f)+1.0f)/2.0f;
+    mitem::whitepulse.alpha = (sin(lastmillis/200.0f)+1.0f)/2.0f;
     int tw = text_width(t);
     if(tw>w) w = tw;
     if(header)

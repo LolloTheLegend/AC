@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.3)
 
 set (CMAKE_CXX_COMPILER clang++)
 
-
-# Not needed: It's here for future development ##
+####################################################################
+######### Not needed: It's here for future development #############
 set (ENET_SRC_DIRECTORY "source/enet")
 
 execute_process (
@@ -35,6 +35,7 @@ add_custom_target (
     WORKING_DIRECTORY ${ENET_SRC_DIRECTORY}
     COMMENT "Cleaning ENET source code"
 )
+####################################################################
 ####################################################################
 
 set(
@@ -119,8 +120,7 @@ add_executable(
     ${SERVER_SRCS}
 )
 
-target_include_directories(client PUBLIC source/src source/src/bot ${SDL_INCLUDE_DIR}
-)
+target_include_directories(client PUBLIC source/src source/src/bot ${SDL_INCLUDE_DIR})
 target_compile_options(client PUBLIC -g -O3 -Wall -fomit-frame-pointer -fsigned-char )
 target_compile_definitions(client PUBLIC _GNU_SOURCE=1 _REENTRANT)
 target_link_libraries(client PUBLIC -lenet -lX11 ${SDL_LIBRARY} -lSDL_image -lz -lGL -lopenal -lvorbisfile -lcurl)

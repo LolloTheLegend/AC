@@ -1141,7 +1141,7 @@ __attribute__((optimize(2)))
             }
 
             yaw *= RAD;
-            float c = cosf(yaw), s = sinf(yaw);
+            float c = cos(yaw), s = sin(yaw);
             float x1 = -shadowrad, x2 = shadowrad;
             float y1 = -shadowrad, y2 = shadowrad;
 

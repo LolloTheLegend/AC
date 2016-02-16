@@ -247,7 +247,7 @@ static inline bool intersectsphere(const vec &from, const vec &to, vec center, f
     if(inside < 0 && v < 0) return false;
     float raysq = ray.squaredlen(), d = inside*raysq + v*v;
     if(d < 0) return false;
-    dist = (v - sqrtf(d)) / raysq;
+    dist = (v - sqrt(d)) / raysq;
     return dist >= 0 && dist <= 1;
 }
 
@@ -280,7 +280,7 @@ static inline bool intersectcylinder(const vec &from, const vec &to, const vec &
         float b = dd*mn - nd*md,
               discrim = b*b - a*c;
         if(discrim < 0) return false;
-        dist = (-b - sqrtf(discrim)) / a;
+        dist = (-b - sqrt(discrim)) / a;
     }
     else dist = 0;
     float offset = md + dist*nd;
@@ -311,8 +311,8 @@ int intersect(playerent *d, const vec &from, const vec &to, vec *end)
             return 2;
         }
     }
-    float y = d->yaw*RAD, p = (d->pitch/4+90)*RAD, c = cosf(p);
-    vec bottom(d->o), top(sinf(y)*c, -cosf(y)*c, sinf(p))/*, mid(top)*/;
+    float y = d->yaw*RAD, p = (d->pitch/4+90)*RAD, c = cos(p);
+    vec bottom(d->o), top(sin(y)*c, -cos(y)*c, sin(p))/*, mid(top)*/;
     bottom.z -= d->eyeheight;
     float h = d->eyeheight /*+ d->aboveeye*/; // this mod makes the shots pass over the shoulders
 //     mid.mul(h*0.5).add(bottom);            // this mod divides the hitbox in 2
@@ -580,8 +580,8 @@ void addgib(playerent *d)
         const float angle = (float)rnd(360);
         const float speed = (float)gibspeed;
 
-        p->vel.x = sinf(RAD*angle)*rnd(1000)/1000.0f;
-        p->vel.y = cosf(RAD*angle)*rnd(1000)/1000.0f;
+        p->vel.x = sin(RAD*angle)*rnd(1000)/1000.0f;
+        p->vel.y = cos(RAD*angle)*rnd(1000)/1000.0f;
         p->vel.z = rnd(1000)/1000.0f;
         p->vel.mul(speed/100.0f);
 
@@ -888,12 +888,12 @@ void weapon::attackphysics(vec &from, vec &to) // physical fx to the owner
     if(recoiltest)
     {
         owner->vel.add(vec(unitv).mul(recoil/dist).mul(owner->crouching ? 0.75 : 1.0f));
-        owner->pitchvel = min(powf(shots/(float)(recoilincrease), 2.0f)+(float)(recoilbase)/10.0f, (float)(maxrecoil)/10.0f);
+        owner->pitchvel = min(pow(shots/(float)(recoilincrease), 2.0f)+(float)(recoilbase)/10.0f, (float)(maxrecoil)/10.0f);
     }
     else
     {
         owner->vel.add(vec(unitv).mul(recoil/dist).mul(owner->crouching ? 0.75 : 1.0f));
-        owner->pitchvel = min(powf(shots/(float)(g.recoilincrease), 2.0f)+(float)(g.recoilbase)/10.0f, (float)(g.maxrecoil)/10.0f);
+        owner->pitchvel = min(pow(shots/(float)(g.recoilincrease), 2.0f)+(float)(g.recoilbase)/10.0f, (float)(g.maxrecoil)/10.0f);
     }
 }
 
@@ -1167,8 +1167,8 @@ void grenades::thrownade()
     if (quicknade && owner->weaponsel->type == GUN_GRENADE) selectweapon(owner->prevweaponsel);
     quicknade = false;
     if(!inhandnade) return;
-    const float speed = cosf(RAD*owner->pitch);
-    vec vel(sinf(RAD*owner->yaw)*speed, -cosf(RAD*owner->yaw)*speed, sinf(RAD*owner->pitch));
+    const float speed = cos(RAD*owner->pitch);
+    vec vel(sin(RAD*owner->yaw)*speed, -cos(RAD*owner->yaw)*speed, sinf(RAD*owner->pitch));
     vel.mul(1.5f);
     thrownade(vel);
 }

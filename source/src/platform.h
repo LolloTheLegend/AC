@@ -9,7 +9,7 @@
     #define gamma __gamma
 #endif
 
-#include <math.h>
+#include <cmath>
 
 #ifdef __GNUC__
     #undef gamma

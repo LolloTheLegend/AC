@@ -41,7 +41,7 @@ struct weaponmove
             anim = ANIM_GUN_RELOAD;
             basetime = p->weaponchanging;
             float progress = clamp((lastmillis - p->weaponchanging)/(float)weapon::weaponchangetime, 0.0f, 1.0f);
-            k_rot = -90*sinf(progress*M_PI);
+            k_rot = -90*sin(progress*M_PI);
         }
         else if(p->weaponsel->reloading)
         {
@@ -49,7 +49,7 @@ struct weaponmove
             basetime = p->weaponsel->reloading;
             float reloadtime = (float)p->weaponsel->info.reloadtime,
                   progress = clamp((lastmillis - p->weaponsel->reloading)/reloadtime, 0.0f, clamp(1.0f - (p->lastaction + p->weaponsel->gunwait - lastmillis)/reloadtime, 0.5f, 1.0f));
-            k_rot = -90*sinf(progress*M_PI);
+            k_rot = -90*sin(progress*M_PI);
         }
         else
         {
@@ -66,7 +66,7 @@ struct weaponmove
             {
                 progress = max(0.0f, min(1.0f, timediff/(float)animtime));
                 // f(x) = -sin(x-1.5)^3
-                kick = -sinf(pow((1.5f*progress)-1.5f,3));
+                kick = -sin(pow((1.5f*progress)-1.5f,3));
                 if(p->crouching) kick *= 0.75f;
                 if(p->lastaction) anim = p->weaponsel->modelanim();
             }
@@ -80,10 +80,10 @@ struct weaponmove
             if(nosway) sway.x = sway.y = sway.z = 0;
             else
             {
-                float swayspeed = sinf((float)swaymillis/swayspeeddiv)/(swaymovediv/10.0f);
-                float swayupspeed = cosf((float)swaymillis/swayupspeeddiv)/(swayupmovediv/10.0f);
+                float swayspeed = sin((float)swaymillis/swayspeeddiv)/(swaymovediv/10.0f);
+                float swayupspeed = cos((float)swaymillis/swayupspeeddiv)/(swayupmovediv/10.0f);
 
-                float plspeed = min(1.0f, sqrtf(p->vel.x*p->vel.x + p->vel.y*p->vel.y));
+                float plspeed = min(1.0f, sqrt(p->vel.x*p->vel.x + p->vel.y*p->vel.y));
 
                 swayspeed *= plspeed/2;
                 swayupspeed *= plspeed/2;

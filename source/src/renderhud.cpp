@@ -90,90 +90,6 @@ VARP(hideconsole, 0, 0, 1);
 VARP(hidespecthud, 0, 0, 1);
 VAR(showmap, 0, 0, 1);
 
-
-//shotty::
-/*
-VAR(showsgpat, 0, 0, 1);
-
-void drawsgpat(int w, int h)
-{
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDisable(GL_TEXTURE_2D);
-    glColor3ub(0, 0, 0);
-    float sz = min(VIRTW, VIRTH),
-    x1 = VIRTW/2 - sz/2,
-    x2 = VIRTW/2 + sz/2,
-    y1 = VIRTH/2 - sz/2,
-    y2 = VIRTH/2 + sz/2,
-    border = (512 - 64*2)/512.0f;
-    glBegin(GL_TRIANGLE_FAN);
-    glVertex2f(x1 + 0.5f*sz, y1 + 0.5f*sz);
-    int rgbcv = 0;
-    loopi(8+1)
-    {
-        // if((i%3)==0) { glColor3ub(rgbcv,rgbcv,rgbcv); rgbcv += 4; //rgbcv -= 255/(8+1); }
-        if(i%2) glColor3ub(64,64,64); else glColor3ub(32,32,32);
-        float c = 0.5f*(1 + border*cosf(i*2*M_PI/8.0f)), s = 0.5f*(1 + border*sinf(i*2*M_PI/8.0f));
-        glVertex2f(x1 + c*sz, y1 + s*sz);
-    }
-    glColor3ub(255,255,255);
-    glEnd();
-
-    glDisable(GL_BLEND);
-
-    rgbcv = 32;
-    glBegin(GL_TRIANGLE_STRIP);
-    loopi(8+1)
-    {
-        // if((i%3)==0) { glColor3ub(rgbcv,rgbcv,rgbcv); //,128); rgbcv += 8; //rgbcv -= 255/(8+1); }
-        if(i%2) glColor3ub(16,16,16); else glColor3ub(32,32,32);
-        float c = 0.5f*(1 + border*cosf(i*2*M_PI/8.0f)), s = 0.5f*(1 + border*sinf(i*2*M_PI/8.0f));
-        glVertex2f(x1 + c*sz, y1 + s*sz);
-        c = c < 0.4f ? 0 : (c > 0.6f ? 1 : 0.5f);
-        s = s < 0.4f ? 0 : (s > 0.6f ? 1 : 0.5f);
-        glVertex2f(x1 + c*sz, y1 + s*sz);
-    }
-    glColor3ub(255,255,255);
-    glEnd();
-
-    glEnable(GL_TEXTURE_2D);
-    static Texture *pattex = NULL;
-    if(!pattex) pattex = textureload("packages/misc/sgpat.png", 4);
-    loopk(3)
-    {
-        switch(k)
-        {
-            case 0:  glColor3ub(  32, 250, 250); break; // center
-            case 1:  glColor3ub( 250,  64,  64); break; // middle
-            case 2:  glColor3ub( 250, 250,  64); break; // outer
-            default: glColor3ub( 255, 255, 255); break;
-        }
-        extern sgray pat[SGRAYS*3];
-        int j = k * SGRAYS;
-        loopi(SGRAYS)
-        {
-            if(pattex)
-            {
-                vec p = pat[j+i].rv;
-                int ppx = VIRTW/2 + p.x*(sz/2);
-                int ppy = VIRTH/2 + p.y*(sz/2);
-                drawicon(pattex, ppx, ppy, 16, 1, 1, 1);
-            }
-        }
-    }
-    glEnable(GL_BLEND);
-    /\*
-     // 2011may31: dmg/hits output comes upon each shot, let the pattern be shown "pure"
-     extern int lastsgs_hits;
-     extern int lastsgs_dmgt;
-     //draw_textf("H: %d DMG: %d", 8, 32, lastsgs_hits, lastsgs_dmgt);
-     defformatstring(t2show4hitdmg)("H: %d DMG: %d", lastsgs_hits, lastsgs_dmgt);
-     draw_text(t2show4hitdmg, VIRTW/2-text_width(t2show4hitdmg), VIRTH/2-3*FONTH/4);
-     *\/
-}
-*/
-//::shotty
-
 void drawscope(bool preload)
 {
     static Texture *scopetex = NULL;
@@ -197,7 +113,7 @@ void drawscope(bool preload)
     glVertex2f(x1 + 0.5f*sz, y1 + 0.5f*sz);
     loopi(8+1)
     {
-        float c = 0.5f*(1 + border*cosf(i*2*M_PI/8.0f)), s = 0.5f*(1 + border*sinf(i*2*M_PI/8.0f));
+        float c = 0.5f*(1 + border*cos(i*2*M_PI/8.0f)), s = 0.5f*(1 + border*sin(i*2*M_PI/8.0f));
         glTexCoord2f(c, s);
         glVertex2f(x1 + c*sz, y1 + s*sz);
     }
@@ -209,7 +125,7 @@ void drawscope(bool preload)
     glBegin(GL_TRIANGLE_STRIP);
     loopi(8+1)
     {
-        float c = 0.5f*(1 + border*cosf(i*2*M_PI/8.0f)), s = 0.5f*(1 + border*sinf(i*2*M_PI/8.0f));
+        float c = 0.5f*(1 + border*cos(i*2*M_PI/8.0f)), s = 0.5f*(1 + border*sin(i*2*M_PI/8.0f));
         glTexCoord2f(c, s);
         glVertex2f(x1 + c*sz, y1 + s*sz);
         c = c < 0.4f ? 0 : (c > 0.6f ? 1 : 0.5f);
@@ -326,8 +242,8 @@ void updatedmgindicator(vec &attack)
     loopi(4)
     {
         vec d;
-        d.x = (float)(cosf(RAD*(player1->yaw-90+(i*90))));
-        d.y = (float)(sinf(RAD*(player1->yaw-90+(i*90))));
+        d.x = (float)(cos(RAD*(player1->yaw-90+(i*90))));
+        d.y = (float)(sin(RAD*(player1->yaw-90+(i*90))));
         d.z = 0.0f;
         d.add(player1->o);
         float dist = d.dist(attack);
@@ -371,7 +287,7 @@ void drawequipicons(playerent *p)
 {
     glDisable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor4f(1.0f, 1.0f, 1.0f, 0.2f+(sinf(lastmillis/100.0f)+1.0f)/2.0f);
+    glColor4f(1.0f, 1.0f, 1.0f, 0.2f+(sin(lastmillis/100.0f)+1.0f)/2.0f);
 
     // health & armor
     if(p->armour) drawequipicon(560, 1650, (p->armour-1)/25, 2, false);
@@ -391,7 +307,7 @@ void drawequipicons(playerent *p)
 void drawradarent(float x, float y, float yaw, int col, int row, float iconsize, bool pulse, const char *label = NULL, ...)
 {
     glPushMatrix();
-    if(pulse) glColor4f(1.0f, 1.0f, 1.0f, 0.2f+(sinf(lastmillis/30.0f)+1.0f)/2.0f);
+    if(pulse) glColor4f(1.0f, 1.0f, 1.0f, 0.2f+(sin(lastmillis/30.0f)+1.0f)/2.0f);
     else glColor4f(1, 1, 1, 1);
     glTranslatef(x, y, 0);
     glRotatef(yaw, 0, 0, 1);
@@ -555,7 +471,7 @@ void drawradar_showmap(playerent *p, int w, int h)
     }
     if(m_flags)
     {
-        glColor4f(1.0f, 1.0f, 1.0f, (sinf(lastmillis / 100.0f) + 1.0f) / 2.0f);
+        glColor4f(1.0f, 1.0f, 1.0f, (sin(lastmillis / 100.0f) + 1.0f) / 2.0f);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         loopi(2) // flag items
         {
@@ -648,7 +564,7 @@ void drawradar_vicinity(playerent *p, int w, int h)
     }
     if(m_flags)
     {
-        glColor4f(1.0f, 1.0f, 1.0f, (sinf(lastmillis / 100.0f) + 1.0f) / 2.0f);
+        glColor4f(1.0f, 1.0f, 1.0f, (sin(lastmillis / 100.0f) + 1.0f) / 2.0f);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         float d2c = 1.6f * radarentsize/16.0f;
         loopi(2) // flag items
@@ -672,8 +588,8 @@ void drawradar_vicinity(playerent *p, int w, int h)
                     cpos.mul(scaled);
                     float flgoff=radarentsize/0.68f;
                     float ryaw=(camera1->yaw-45)*(2*PI/360);
-                    float offx=flgoff*cosf(-ryaw);
-                    float offy=flgoff*sinf(-ryaw);
+                    float offx=flgoff*cos(-ryaw);
+                    float offy=flgoff*sin(-ryaw);
                     drawradarent(cpos.x+offx, cpos.y-offy, camera1->yaw, 3, m_ktf ? 2 : f.team, iconsize, false); // draw flag on entity pos
                 }
             }
@@ -1119,7 +1035,7 @@ void gl_drawhud(int w, int h, int curfps, int nquads, int curvert, bool underwat
             if((flaginfos[0].state==CTFF_STOLEN && flaginfos[0].actor == p && flaginfos[0].ack) ||
                (flaginfos[1].state==CTFF_STOLEN && flaginfos[1].actor == p && flaginfos[1].ack && ++ft))
             {
-                drawctficon(VIRTW-225-10, VIRTH*5/8, 225, ft, 1, 1/2.0f, (sinf(lastmillis/100.0f)+1.0f) *128);
+                drawctficon(VIRTW-225-10, VIRTH*5/8, 225, ft, 1, 1/2.0f, (sin(lastmillis/100.0f)+1.0f) *128);
             }
         }
     }
@@ -1177,7 +1093,7 @@ static void bar(float bar, int o, float r, float g, float b)
     glBegin(GL_TRIANGLE_STRIP);
     loopk(10)
     {
-       float c = 1.2f*cosf(M_PI/2 + k/9.0f*M_PI), s = 1 + 1.2f*sinf(M_PI/2 + k/9.0f*M_PI);
+       float c = 1.2f*cos(M_PI/2 + k/9.0f*M_PI), s = 1 + 1.2f*sin(M_PI/2 + k/9.0f*M_PI);
        glVertex2f(x2 - c*FONTH, y1 + s*FONTH);
        glVertex2f(x1 + c*FONTH, y1 + s*FONTH);
     }
@@ -1187,7 +1103,7 @@ static void bar(float bar, int o, float r, float g, float b)
     glBegin(GL_TRIANGLE_STRIP);
     loopk(10)
     {
-       float c = cosf(M_PI/2 + k/9.0f*M_PI), s = 1 + sinf(M_PI/2 + k/9.0f*M_PI);
+       float c = cos(M_PI/2 + k/9.0f*M_PI), s = 1 + sin(M_PI/2 + k/9.0f*M_PI);
        glVertex2f(x2 - c*FONTH, y1 + s*FONTH);
        glVertex2f(x1 + c*FONTH, y1 + s*FONTH);
     }

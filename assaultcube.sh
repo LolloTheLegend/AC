@@ -86,7 +86,7 @@ fi
 
 if [ -x "${CUBE_DIR}/client" ]; then
   cd "${CUBE_DIR}"
-  exec "${CUBE_DIR}/wdclient" ${CUBE_OPTIONS} "$@"
+  exec "${CUBE_DIR}/client" ${CUBE_OPTIONS} "$@"
 elif [ -e "${CUBE_DIR}/client" ]; then
   echo "Insufficient permissons to run AssaultCube."
   echo "Please change (chmod) the AssaultCube client in the bin_unix folder to be readable/executable."

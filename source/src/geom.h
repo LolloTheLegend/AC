@@ -86,7 +86,7 @@ struct vec
     float dot(const vec &o) const { return x*o.x + y*o.y + z*o.z; }
     float dotxy(const vec &o) const { return x*o.x + y*o.y; }
 
-    float magnitude() const { return sqrtf(squaredlen()); }
+    float magnitude() const { return sqrt(squaredlen()); }
     vec &normalize() { div(magnitude()); return *this; }
 
     // should NOT be used
@@ -98,21 +98,21 @@ struct vec
     float dist(const vec &e) const { vec t; return dist(e, t); }
     float dist(const vec &e, vec &t) const { t = *this; t.sub(e); return t.magnitude(); }
 
-    float distxy(const vec &e) const { float dx = e.x - x, dy = e.y - y; return sqrtf(dx*dx + dy*dy); }
-    float magnitudexy() const { return sqrtf(x*x + y*y); }
+    float distxy(const vec &e) const { float dx = e.x - x, dy = e.y - y; return sqrt(dx*dx + dy*dy); }
+    float magnitudexy() const { return sqrt(x*x + y*y); }
 
     bool reject(const vec &o, float max) const { return x>o.x+max || x<o.x-max || y>o.y+max || y<o.y-max; }
 
     vec &cross(const vec &a, const vec &b) { x = a.y*b.z-a.z*b.y; y = a.z*b.x-a.x*b.z; z = a.x*b.y-a.y*b.x; return *this; }
     float cxy(const vec &a) { return x*a.y-y*a.x; }
 
-    void rotate_around_z(float angle) { *this = vec(cosf(angle)*x-sinf(angle)*y, cosf(angle)*y+sinf(angle)*x, z); }
-    void rotate_around_x(float angle) { *this = vec(x, cosf(angle)*y-sinf(angle)*z, cosf(angle)*z+sinf(angle)*y); }
-    void rotate_around_y(float angle) { *this = vec(cosf(angle)*x-sinf(angle)*z, y, cosf(angle)*z+sinf(angle)*x); }
+    void rotate_around_z(float angle) { *this = vec(cos(angle)*x-sin(angle)*y, cos(angle)*y+sin(angle)*x, z); }
+    void rotate_around_x(float angle) { *this = vec(x, cos(angle)*y-sin(angle)*z, cos(angle)*z+sin(angle)*y); }
+    void rotate_around_y(float angle) { *this = vec(cos(angle)*x-sin(angle)*z, y, cos(angle)*z+sin(angle)*x); }
 
     vec &rotate(float angle, const vec &d)
     {
-        float c = cosf(angle), s = sinf(angle);
+        float c = cos(angle), s = sin(angle);
         return rotate(c, s, d);
     }
 
@@ -238,7 +238,7 @@ struct glmatrixf
 
     void rotate_around_x(float angle)
     {
-        float c = cosf(angle), s = sinf(angle);
+        float c = cos(angle), s = sin(angle);
         ROTVEC(v[4], v[8]);
         ROTVEC(v[5], v[9]);
         ROTVEC(v[6], v[10]);
@@ -246,7 +246,7 @@ struct glmatrixf
 
     void rotate_around_y(float angle)
     {
-        float c = cosf(angle), s = sinf(angle);
+        float c = cos(angle), s = sin(angle);
         ROTVEC(v[8], v[0]);
         ROTVEC(v[9], v[1]);
         ROTVEC(v[10], v[2]);
@@ -254,7 +254,7 @@ struct glmatrixf
 
     void rotate_around_z(float angle)
     {
-        float c = cosf(angle), s = sinf(angle);
+        float c = cos(angle), s = sin(angle);
         ROTVEC(v[0], v[4]);
         ROTVEC(v[1], v[5]);
         ROTVEC(v[2], v[6]);
