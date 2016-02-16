@@ -39,15 +39,15 @@ x86_64)
 *)
   if [ ${SYSTEM_NAME} != native_ ]
   then
-    SYSTEM_NAME=native_
+    SYSTEM_NAME=
   fi
   MACHINE_NAME=
   ;;
 esac
 
-if [ -x "${CUBE_DIR}/bin_unix/native_server" ]
+if [ -x "${CUBE_DIR}/server" ]
 then
-  SYSTEM_NAME=native_
+  SYSTEM_NAME=
   MACHINE_NAME=
 fi
 

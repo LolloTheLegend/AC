@@ -21,6 +21,13 @@ endif
 
 INCLUDES= -I. -Ibot -I../enet/include
 
+STRIP=
+ifeq (,$(findstring -g,$(CXXFLAGS)))
+ifeq (,$(findstring -pg,$(CXXFLAGS)))
+  STRIP=strip
+endif
+endif
+
 MV=mv
 ifneq (,$(findstring MINGW,$(PLATFORM)))
 WINDRES= windres
@@ -87,6 +94,8 @@ CLIENT_OBJS= \
 	bot/ac_bot.o \
 	bot/ac_bot_ai.o
 
+CLIENT_PCH= cube.h.gch
+
 ifneq (,$(findstring MINGW,$(PLATFORM)))
 SERVER_INCLUDES= -DSTANDALONE $(INCLUDES) -I../include
 SERVER_LIBS= -L../lib -lzdll -lenet -llibintl -lws2_32 -lwinmm
@@ -132,6 +141,9 @@ clean:
 	-$(RM) $(CLIENT_PCH) $(CLIENT_OBJS) $(SERVER_OBJS) $(MASTER_OBJS) ac_client ac_server ac_master
 #	-$(MAKE) -C ../enet/ clean
 
+%.h.gch: %.h
+	$(CXX) $(CXXFLAGS) -x c++-header -o $@.tmp $(subst .h.gch,.h,$@)
+	$(MV) $@.tmp $@
 
 %-standalone.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $(subst -standalone.o,.cpp,$@)
@@ -167,10 +179,16 @@ master: libenet $(MASTER_OBJS)
 client_install: client
 	install -d ../../bin_unix/
 	install -m755 ac_client ../../bin_unix/$(PLATFORM_PREFIX)_client
+#ifneq (,$(STRIP))
+#	$(STRIP) ../../bin_unix/$(PLATFORM_PREFIX)_client
+#endif
 
 server_install: server
 	install -d ../../bin_unix/
 	install -m755 ac_server ../../bin_unix/$(PLATFORM_PREFIX)_server
+#ifneq (,$(STRIP))
+#	$(STRIP) ../../bin_unix/$(PLATFORM_PREFIX)_server
+#endif
 
 endif
 
@@ -178,6 +196,7 @@ install: client_install server_install
 
 depend:
 	makedepend -Y -I. -Ibot $(subst .o,.cpp,$(CLIENT_OBJS))
+	makedepend -a -o.h.gch -Y -I. -Ibot $(subst .h.gch,.h,$(CLIENT_PCH))
 	makedepend -a -o-standalone.o -Y -I. -Ibot $(subst -standalone.o,.cpp,$(SERVER_OBJS))
 	makedepend -a -o-standalone.o -Y -I. $(subst -standalone.o,.cpp,$(filter-out $(SERVER_OBJS), $(MASTER_OBJS)))
 
@@ -348,6 +367,10 @@ bot/ac_bot_ai.o: cube.h platform.h tools.h geom.h model.h protocol.h sound.h
 bot/ac_bot_ai.o: weapon.h entity.h world.h i18n.h command.h varray.h vote.h
 bot/ac_bot_ai.o: console.h protos.h bot/bot.h bot/bot_util.h
 bot/ac_bot_ai.o: bot/bot_waypoint.h bot/ac_bot.h
+
+cube.h.gch: platform.h tools.h geom.h model.h protocol.h sound.h weapon.h
+cube.h.gch: entity.h world.h i18n.h command.h varray.h vote.h console.h
+cube.h.gch: protos.h
 
 crypto-standalone.o: cube.h platform.h tools.h geom.h model.h protocol.h
 crypto-standalone.o: sound.h weapon.h entity.h world.h i18n.h command.h

@@ -43,7 +43,7 @@ x86_64)
   ;;
 esac
 
-if [ -x "${CUBE_DIR}/bin_unix/native_client" ]
+if [ -x "${CUBE_DIR}/client" ]
 then
   SYSTEM_NAME=native_
   MACHINE_NAME=
