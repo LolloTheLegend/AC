@@ -4,6 +4,7 @@
 
 class playerent;
 class bounceent;
+struct entity;
 
 struct weapon
 {
@@ -199,6 +200,22 @@ struct knife : weapon
     int flashtime() const;
 };
 
+void shoot(playerent *d, vec &to);
+void setscope(bool activate);
+void setburst(bool activate);
+void tryreload(playerent* p);
+void createrays(vec &from, vec &to);
+int intersect(playerent *d, const vec &from, const vec &to, vec *end = NULL);
+bool intersect(entity *e, const vec &from, const vec &to, vec *end = NULL);
+playerent *playerincrosshair(void);
+void damageeffect(int damage, playerent *d);
+void removebounceents(playerent *owner);
+void movebounceents(void);
+void clearbounceents(void);
+void renderbounceents(void);
+void addgib(playerent *d);
+void r_accuracy(int h);
+void checkweaponstate();
 
 #endif	// WEAPON_H
 

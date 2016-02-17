@@ -752,20 +752,6 @@ extern void renderclient(playerent *d);
 extern void renderclient(playerent *d, const char *mdlname, const char *vwepname, int tex = 0);
 extern void updateclientname(playerent *d);
 
-// weapon
-extern void shoot(playerent *d, vec &to);
-extern void createrays(vec &from, vec &to);
-extern void removebounceents(playerent *owner);
-extern void movebounceents();
-extern void clearbounceents();
-extern void renderbounceents();
-extern void addgib(playerent *d);
-extern playerent *playerincrosshair();
-extern int magsize(int gun);
-extern void setscope(bool activate);
-extern void setburst(bool activate);
-extern int intersect(playerent *d, const vec &from, const vec &to, vec *end = NULL);
-extern bool intersect(entity *e, const vec &from, const vec &to, vec *end = NULL);
 // Structure for storing traceresults
 struct traceresult_s
 {
@@ -773,9 +759,6 @@ struct traceresult_s
      bool collided;
 };
 void TraceLine(vec from, vec to, dynent *pTracer, bool CheckPlayers, traceresult_s *tr, bool SkipTags=false);
-extern void damageeffect(int damage, playerent *d);
-extern void tryreload(playerent *p);
-extern void checkweaponstate();
 extern struct projectile *newprojectile(vec &from, vec &to, float speed, bool local, playerent *owner, int gun, int id = lastmillis);
 extern int burstshotssettings[NUMGUNS];
 
@@ -988,7 +971,7 @@ struct servercommandline
         int ai = atoi(a);
         // client: dtwhzbsave
         switch(arg[1])
-        { // todo: gjlqGHJQUYZ
+        {
             case '-':
                     if(!strncmp(arg, "--demofilenameformat=", 21))
                     {
