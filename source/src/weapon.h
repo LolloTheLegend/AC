@@ -2,6 +2,8 @@
 #ifndef WEAPON_H
 #define WEAPON_H
 
+#include "geom.h"
+
 class playerent;
 class bounceent;
 struct entity;

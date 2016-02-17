@@ -1,6 +1,11 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+#include "protocol.h"
+#include "weapon.h"
+#include "model.h"
+#include "sound.h"
+
 enum                            // static entity types
 {
     NOTUSED = 0,                // entity slot not in use in map

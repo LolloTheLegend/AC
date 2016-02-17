@@ -4,6 +4,8 @@
 #ifndef SOUND_H
 #define SOUND_H
 
+#include "platform.h"
+
 enum
 {    // To avoid a lot of work, possible bugs and allow backward compatibility for players own custom
     // cfg files, it's best not to change the listed sound order, instead, just add to it.

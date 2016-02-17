@@ -1,6 +1,8 @@
 #ifndef CONSOLE_H
 #define CONSOLE_H
 
+#include "tools.h"
+
 struct cline { char *line; int millis; };
 
 template<class LINE> struct consolebuffer

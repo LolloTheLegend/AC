@@ -3,6 +3,8 @@
 #ifndef TOOLS_H
 #define TOOLS_H
 
+#include <platform.h>
+
 #ifdef NULL
 #undef NULL
 #endif
@@ -127,11 +129,6 @@ struct stringformatter
 #define formatstring(d) stringformatter((char *)d)
 #define defformatstring(d) string d; formatstring(d)
 #define defvformatstring(d,last,fmt) string d; { va_list ap; va_start(ap, last); vformatstring(d, fmt, ap); va_end(ap); }
-
-//#define s_sprintf(d) s_sprintf_f((char *)d)
-//#define s_sprintfd(d) string d; s_sprintf(d)
-//#define s_sprintfdlv(d,last,fmt) string d; { va_list ap; va_start(ap, last); formatstring(d, fmt, ap); va_end(ap); }
-//#define s_sprintfdv(d,fmt) s_sprintfdlv(d,fmt,fmt)
 
 inline char *strcaps(const char *s, bool on)
 {

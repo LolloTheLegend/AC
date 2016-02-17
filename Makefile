@@ -48,18 +48,18 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/edav/devel/AC
+CMAKE_SOURCE_DIR = /home/edav/devel/cpp-work/AC
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/edav/devel/AC
+CMAKE_BINARY_DIR = /home/edav/devel/cpp-work/AC
 
 #=============================================================================
 # Targets provided globally by CMake.
 
 # Special rule for the target edit_cache
 edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
-	/usr/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
+	/usr/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -80,9 +80,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/edav/devel/AC/CMakeFiles /home/edav/devel/AC/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/edav/devel/cpp-work/AC/CMakeFiles /home/edav/devel/cpp-work/AC/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/edav/devel/AC/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/edav/devel/cpp-work/AC/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -582,6 +582,33 @@ source/src/docs.s: source/src/docs.cpp.s
 source/src/docs.cpp.s:
 	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/docs.cpp.s
 .PHONY : source/src/docs.cpp.s
+
+source/src/dummy.o: source/src/dummy.cpp.o
+
+.PHONY : source/src/dummy.o
+
+# target to build an object file
+source/src/dummy.cpp.o:
+	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/dummy.cpp.o
+.PHONY : source/src/dummy.cpp.o
+
+source/src/dummy.i: source/src/dummy.cpp.i
+
+.PHONY : source/src/dummy.i
+
+# target to preprocess a source file
+source/src/dummy.cpp.i:
+	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/dummy.cpp.i
+.PHONY : source/src/dummy.cpp.i
+
+source/src/dummy.s: source/src/dummy.cpp.s
+
+.PHONY : source/src/dummy.s
+
+# target to generate assembly for a file
+source/src/dummy.cpp.s:
+	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/dummy.cpp.s
+.PHONY : source/src/dummy.cpp.s
 
 source/src/editing.o: source/src/editing.cpp.o
 
@@ -1688,6 +1715,9 @@ help:
 	@echo "... source/src/docs.o"
 	@echo "... source/src/docs.i"
 	@echo "... source/src/docs.s"
+	@echo "... source/src/dummy.o"
+	@echo "... source/src/dummy.i"
+	@echo "... source/src/dummy.s"
 	@echo "... source/src/editing.o"
 	@echo "... source/src/editing.i"
 	@echo "... source/src/editing.s"

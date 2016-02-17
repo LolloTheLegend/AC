@@ -6,6 +6,8 @@
 #ifndef GEOM_H
 #define GEOM_H
 
+#include <tools.h>
+
 #define UFINVSQRT(x)  union { int d; float f; } u; u.f = x; u.d = 0x5f3759df - (u.d >> 1)
 inline float ufInvSqrt (float x) { UFINVSQRT(x); return u.f; } // about 3.5% of error
 inline float fInvSqrt (float x) { UFINVSQRT(x); return 0.5f * u.f * ( 3.00175f - x * u.f * u.f ); } // about 0.1% of error

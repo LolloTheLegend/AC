@@ -1,6 +1,8 @@
 #ifndef WORLD_H
 #define WORLD_H
 
+#include "entity.h"
+
 enum                            // block types, order matters!
 {
     SOLID = 0,                  // entirely solid cube [only specifies wtex]

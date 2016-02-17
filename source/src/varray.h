@@ -1,6 +1,8 @@
 #ifndef VARRAY_H
 #define VARRAY_H
 
+#include "tools.h"
+
 namespace varray
 {
     enum
