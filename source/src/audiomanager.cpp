@@ -6,7 +6,7 @@
 
 VARF(audio, 0, 1, 1, initwarning("sound configuration", INIT_RESET, CHANGE_SOUND));
 VARP(audiodebug, 0, 0, 1);
-char *musicdonecmd = NULL;
+static char *musicdonecmd = NULL;
 
 VARFP(musicvol, 0, 128, 255, audiomgr.setmusicvol(musicvol));
 
@@ -294,8 +294,8 @@ void audiomanager::mapsoundreset()
     locations.deleteworldobjsounds();
 }
 
-VARP(footsteps, 0, 1, 1);
-VARP(localfootsteps, 0, 1, 1);
+static VARP(footsteps, 0, 1, 1);
+static VARP(localfootsteps, 0, 1, 1);
 
 void audiomanager::updateplayerfootsteps(playerent *p)
 {
@@ -374,7 +374,7 @@ location *audiomanager::updateloopsound(int sound, bool active, float vol)
     return l;
 }
 
-VARP(mapsoundrefresh, 0, 10, 1000);
+static VARP(mapsoundrefresh, 0, 10, 1000);
 
 void audiomanager::mutesound(int n, int off)
 {
@@ -414,7 +414,7 @@ void audiomanager::writesoundconfig(stream *f)
     }
 }
 
-void voicecom(char *sound, char *text)
+static void voicecom(char *sound, char *text)
 {
     if(!sound || !sound[0]) return;
     if(!text || !text[0]) return;
@@ -550,7 +550,7 @@ void audiomanager::stopsound()
     if(gamemusic) gamemusic->reset();
 }
 
-VARP(heartbeat, 0, 0, 99);
+static VARP(heartbeat, 0, 0, 99);
 
 // main audio update routine
 

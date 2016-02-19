@@ -1,9 +1,15 @@
 #ifndef CONSOLE_H
 #define CONSOLE_H
 
+#include <SDL/SDL_keysym.h>
+#include <SDL/SDL_keyboard.h>
+#include <string>
 #include "tools.h"
+#include <utf8.h>
 
 struct cline { char *line; int millis; };
+
+void pasteconsole(char *dst);
 
 template<class LINE> struct consolebuffer
 {
@@ -214,7 +220,6 @@ struct textinputbuffer_wip
             }
 
             case SDLK_v:
-                extern void pasteconsole(char *dst);
 #ifdef __APPLE__
 #define MOD_KEYS (KMOD_LMETA|KMOD_RMETA)
 #else
@@ -263,8 +268,44 @@ struct textinputbuffer_wip
     }
 };
 
+struct keym
+{
+    int code;
+
+    enum
+    {
+        ACTION_DEFAULT = 0,
+        ACTION_SPECTATOR,
+        ACTION_EDITING,
+        NUMACTIONS
+    };
+
+    char *name, *actions[NUMACTIONS];
+    bool pressed;
+
+    keym() : code(-1), name(NULL), pressed(false) { loopi(NUMACTIONS) actions[i] = newstring(""); }
+    ~keym() { DELETEA(name); loopi(NUMACTIONS) DELETEA(actions[i]); }
+};
+
+bool bindkey(keym *km, const char *action, int state = keym::ACTION_DEFAULT);
+bool bindc(int code, const char *action, int type = keym::ACTION_DEFAULT);
+
+
+extern textinputbuffer cmdline;
+extern keym* keypressed;
+
+void renderconsole();
+void clientlogf(const char *s, ...);
+void conoutf(const char *s, ...);
+int rendercommand(int x, int y, int w);
+keym *findbinda(const char *action, int type = keym::ACTION_DEFAULT);
+char *addreleaseaction(const char *s);
 void savehistory();
 void loadhistory();
+void keypress(int code, bool isdown, int cooked, SDLMod mod = KMOD_NONE);
+char *getcurcommand();
+void writebinds(stream *f);
+
 
 #endif	// CONSOLE_H
 

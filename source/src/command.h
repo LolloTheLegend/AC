@@ -104,6 +104,47 @@ enum { IEXC_CORE = 0, IEXC_CFG, IEXC_PROMPT, IEXC_MAPCFG, IEXC_MDLCFG, IEXC_NUM 
 
 #define ATOI(s) strtol(s, NULL, 0)      // supports hexadecimal numbers
 
+extern int execcontext;
+
+
+void push(const char *name, const char *action);
+void pop(const char *name);
+void alias(const char *name, const char *action, bool constant = false);
+int variable(const char *name, int min, int cur, int max, int *storage, void (*fun)(), bool persist);
+float fvariable(const char *name, float min, float cur, float max, float *storage, void (*fun)(), bool persist);
+char *svariable(const char *name, const char *cur, char **storage, void (*fun)(), bool persist);
+void setvar(const char *name, int i, bool dofunc = false);
+void setfvar(const char *name, float f, bool dofunc = false);
+void setsvar(const char *name, const char *str, bool dofunc = false);
+int getvar(const char *name);
+bool identexists(const char *name);
+const char *getalias(const char *name);
+bool addcommand(const char *name, void (*fun)(), const char *sig);
+char *parseword(const char *&p);
+char *conc(char **w, int n, bool space);
+void intret(int v);
+const char *floatstr(float v);
+void floatret(float v);
+void result(const char *s);
+char *executeret(const char *p);
+int execute(const char *p);
+void resetcomplete();
+void complete(char *s);
+void setcontext(const char *context, const char *info);
+void resetcontext();
+bool execfile(const char *cfgfile);
+void exec(const char *cfgfile);
+void explodelist(const char *s, vector<char *> &elems);
+char *indexlist(const char *s, int pos);
+char *strreplace(char *dest, const char *source, const char *search, const char *replace);
+int stringsort(const char **a, const char **b);
+void writecfg();
+void deletecfg();
+void identnames(vector<const char *> &names, bool builtinonly);
+void pushscontext(int newcontext);
+int popscontext();
+int millis_();
+const char *currentserver(int i);
 
 #endif	// COMMAND_H
 

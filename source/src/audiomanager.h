@@ -5,6 +5,7 @@
 #define SOUND_H
 
 #include "platform.h"
+#include "geom.h"
 
 enum
 {    // To avoid a lot of work, possible bugs and allow backward compatibility for players own custom
@@ -79,6 +80,20 @@ enum
     S_KTFSCORE,
     S_NULL
 };
+
+enum
+{
+    NOT_INITING = 0,
+    INIT_LOAD,
+    INIT_RESET
+};
+enum
+{
+    CHANGE_GFX   = 1<<0,
+    CHANGE_SOUND = 1<<1
+};
+
+bool initwarning(const char *desc, int level = INIT_RESET, int type = CHANGE_GFX);
 
 // hardcoded music
 
@@ -442,6 +457,8 @@ public:
     void writesoundconfig(stream *f);
 };
 
+extern audiomanager audiomgr;
+
 void alclearerr();
 bool alerr(bool msg = true, int line = 0, const char *s = NULL, ...);
 #define ALERR alerr(true, __LINE__)
@@ -451,8 +468,6 @@ extern vector<soundconfig> gamesounds, mapsounds;
 extern ov_callbacks oggcallbacks;
 extern int soundvol;
 extern int audiodebug;
-
-extern audiomanager audiomgr;
 
 #endif //#ifndef STANDALONE
 

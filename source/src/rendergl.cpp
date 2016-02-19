@@ -191,7 +191,7 @@ void disablepolygonoffset(GLenum type, bool restore)
 }
 
 
-#include "varray-internal.h"
+#include "varray-private.h"
 
 void line(int x1, int y1, float z1, int x2, int y2, float z2)
 {

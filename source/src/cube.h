@@ -9,7 +9,7 @@
 #include "geom.h"
 #include "model.h"
 #include "protocol.h"
-#include "sound.h"
+#include "audiomanager.h"
 #include "weapon.h"
 #include "entity.h"
 #include "world.h"
@@ -29,6 +29,9 @@
  };
 #endif
 
+#include "console.h"
+#include "docs.h"
+#include "client.h"
 #include "protos.h"                     // external function decls
 
 #endif

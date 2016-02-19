@@ -99,40 +99,8 @@ struct authkey // for AUTH
 // console
 extern stream *clientlogfile;
 extern vector<char> *bootclientlog;
+extern int clientloglinesremaining;
 
-extern void keypress(int code, bool isdown, int cooked, SDLMod mod = KMOD_NONE);
-extern int rendercommand(int x, int y, int w);
-extern void renderconsole();
-extern char *getcurcommand();
-extern char *addreleaseaction(const char *s);
-extern void writebinds(stream *f);
-extern void pasteconsole(char *dst);
-extern void clientlogf(const char *s, ...);
-
-struct keym
-{
-    int code;
-
-    enum
-    {
-        ACTION_DEFAULT = 0,
-        ACTION_SPECTATOR,
-        ACTION_EDITING,
-        NUMACTIONS
-    };
-
-    char *name, *actions[NUMACTIONS];
-    bool pressed;
-
-    keym() : code(-1), name(NULL), pressed(false) { loopi(NUMACTIONS) actions[i] = newstring(""); }
-    ~keym() { DELETEA(name); loopi(NUMACTIONS) DELETEA(actions[i]); }
-};
-
-extern keym *keypressed;
-
-extern bool bindkey(keym *km, const char *action, int state = keym::ACTION_DEFAULT);
-extern keym *findbinda(const char *action, int type = keym::ACTION_DEFAULT);
-extern bool bindc(int code, const char *action, int type = keym::ACTION_DEFAULT);
 
 // menus
 extern void rendermenu();
@@ -377,13 +345,6 @@ static inline Texture *lookupworldtexture(int tex, bool trydl = true)
 extern float skyfloor;
 extern void draw_envbox(int fogdist);
 
-extern int autodownload;
-extern void setupcurl();
-extern bool requirepackage(int type, const char *path);
-extern int downloadpackages();
-extern void sortpckservers();
-extern void writepcksourcecfg();
-
 extern int maxtmus;
 extern void inittmus();
 extern void resettmu(int n);
@@ -414,29 +375,9 @@ extern int renderwater(float hf, GLuint reflecttex, GLuint refracttex);
 extern void resetwater();
 
 // client
-extern void abortconnect();
-extern void disconnect(int onlyclean = 0, int async = 0);
-extern void cleanupclient();
-extern void toserver(char *text);
-extern void addmsg(int type, const char *fmt = NULL, ...);
-extern bool multiplayer(bool msg = true);
-extern bool allowedittoggle();
-extern void sendpackettoserv(int chan, ENetPacket *packet);
-extern void gets2c();
-extern void c2sinfo(playerent *d);
-extern void c2skeepalive();
 extern void neterr(const char *s);
-extern int getclientnum();
 extern void changeteam(int team, bool respawn = true); // deprecated?
-extern void getmap(char *name = NULL, char *callback = NULL);
 extern void newteam(char *name);
-extern bool securemapcheck(const char *map, bool msg = true);
-extern int getbuildtype();
-extern void sendintro();
-extern void getdemo(int *idx, char *dsp);
-extern void listdemos();
-extern bool tryauth(const char *desc);
-extern authkey *findauthkey(const char *desc);
 
 // serverms
 bool requestmasterf(const char *fmt, ...); // for AUTH et al
@@ -573,18 +514,8 @@ extern void keyrepeat(bool on);
 extern bool interceptkey(int sym);
 extern bool firstrun, inmainloop;
 
-enum
-{
-    NOT_INITING = 0,
-    INIT_LOAD,
-    INIT_RESET
-};
-enum
-{
-    CHANGE_GFX   = 1<<0,
-    CHANGE_SOUND = 1<<1
-};
-extern bool initwarning(const char *desc, int level = INIT_RESET, int type = CHANGE_GFX);
+
+
 
 // rendertext
 struct font
@@ -757,24 +688,6 @@ extern void attack(bool on);
 extern void vecfromyawpitch(float yaw, float pitch, int move, int strafe, vec &m);
 extern void vectoyawpitch(const vec &v, float &yaw, float &pitch);
 
-// sound
-/*
-extern void audiomgr.playsound(int n, int priority = SP_NORMAL);
-extern void audiomgr.playsound(int n, physent *p, int priority = SP_NORMAL);
-extern void audiomgr.playsound(int n, entity *e, int priority = SP_NORMAL);
-extern void audiomgr.playsound(int n, const vec *v, int priority = SP_NORMAL);
-extern void audiomgr.playsoundc(int n, physent *p = NULL, int priority = SP_NORMAL);
-extern void initsound();
-extern void soundcleanup();
-extern void musicsuggest(int id, int millis = 0, bool rndofs = false);
-extern void musicfadeout(int id);
-extern void clearworldsounds(bool fullclean = true);
-extern void detachsounds(playerent *owner);
-extern void updateaudio();
-extern void preloadmapsound(entity &e);
-extern void preloadmapsounds();
-extern void writesoundconfig(stream *f);
-*/
 
 // rendermodel
 extern void rendermodel(const char *mdl, int anim, int tex, float rad, const vec &o, float yaw, float pitch, float speed = 0, int basetime = 0, playerent *d = NULL, modelattach *a = NULL, float scale = 1.0f);
@@ -818,12 +731,6 @@ extern void syncentchanges(bool force = false);
 // rndmap
 extern void perlinarea(block &b, int scale, int seed, int psize);
 
-// doc
-extern void renderdoc(int x, int y, int doch);
-extern void renderdocmenu(void *menu, bool init);
-extern void toggledoc();
-extern void scrolldoc(int i);
-extern int stringsort(const char **a, const char **b);
 #endif
 
 // protocol [client and server]
@@ -843,50 +750,11 @@ extern void freechallenge(void *answer);
 extern bool checkchallenge(const char *answerstr, void *correct);
 
 // console
-extern void conoutf(const char *s, ...);
 
 // command
 extern bool per_idents, neverpersist;
-extern int variable(const char *name, int min, int cur, int max, int *storage, void (*fun)(), bool persist);
-extern float fvariable(const char *name, float min, float cur, float max, float *storage, void (*fun)(), bool persist);
-extern char *svariable(const char *name, const char *cur, char **storage, void (*fun)(), bool persist);
-extern void setvar(const char *name, int i, bool dofunc = false);
-extern void setfvar(const char *name, float f, bool dofunc = false);
-extern void setsvar(const char *name, const char *str, bool dofunc = false);
-extern int getvar(const char *name);
-extern bool identexists(const char *name);
-extern bool addcommand(const char *name, void (*fun)(), const char *sig);
-extern int execute(const char *p);
-extern char *executeret(const char *p);
-extern char *conc(char **w, int n, bool space);
-extern void intret(int v);
-extern const char *floatstr(float v);
-extern void floatret(float v);
-extern void result(const char *s);
-extern void exec(const char *cfgfile);
-extern bool execfile(const char *cfgfile);
-extern void resetcomplete();
-extern void complete(char *s);
-extern void push(const char *name, const char *action);
-extern void pop(const char *name);
-extern void alias(const char *name, const char *action, bool constant = false);
-extern const char *getalias(const char *name);
-extern void writecfg();
-extern void deletecfg();
-extern void identnames(vector<const char *> &names, bool builtinonly);
 extern void changescriptcontext(int newcontext);
-extern void explodelist(const char *s, vector<char *> &elems);
-extern char *indexlist(const char *s, int pos);
-extern char *parseword(const char *&p);
-extern char *strreplace(char *dest, const char *source, const char *search, const char *replace);
-extern void pushscontext(int newcontext);
-extern int popscontext();
 extern int curscontext();
-extern int execcontext;
-extern const char *currentserver(int i);
-extern void setcontext(const char *context, const char *info);
-extern void resetcontext();
-extern int millis_();
 extern int screenshottype;
 
 // server

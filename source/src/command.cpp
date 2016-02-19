@@ -3,28 +3,28 @@
 
 #include "cube.h"
 
-bool allowidentaccess(ident *id);
-char *exchangestr(char *o, const char *n) { delete[] o; return newstring(n); }
-void scripterr();
+static bool allowidentaccess(ident *id);
+static char *exchangestr(char *o, const char *n) { delete[] o; return newstring(n); }
+static void scripterr();
 
-vector<int> contextstack;
-bool contextsealed = false;
-bool contextisolated[IEXC_NUM] = { false };
+static vector<int> contextstack;
+static bool contextsealed = false;
+static bool contextisolated[IEXC_NUM] = { false };
 int execcontext;
 
-bool loop_break = false, loop_skip = false;             // break or continue (skip) current loop
-int loop_level = 0;                                      // avoid bad calls of break & continue
+static bool loop_break = false, loop_skip = false;             // break or continue (skip) current loop
+static int loop_level = 0;                                      // avoid bad calls of break & continue
 
 hashtable<const char *, ident> *idents = NULL;          // contains ALL vars/commands/aliases
 
-VAR(persistidents, 0, 1, 1);
+static VAR(persistidents, 0, 1, 1);
 
 bool per_idents = true, neverpersist = false;
 COMMANDF(per_idents, "i", (int *on) {
     per_idents = neverpersist ? false : (*on != 0);
 });
 
-void clearstack(ident &id)
+static void clearstack(ident &id)
 {
     identstack *stack = id.stack;
     while(stack)
@@ -37,7 +37,7 @@ void clearstack(ident &id)
     id.stack = NULL;
 }
 
-void pushident(ident &id, char *val, int context = execcontext)
+static void pushident(ident &id, char *val, int context = execcontext)
 {
     if(id.type != ID_ALIAS) return;
     identstack *stack = new identstack;
@@ -49,7 +49,7 @@ void pushident(ident &id, char *val, int context = execcontext)
     id.context = context;
 }
 
-void popident(ident &id)
+static void popident(ident &id)
 {
     if(id.type != ID_ALIAS || !id.stack) return;
     if(id.action != id.executing) delete[] id.action;
@@ -60,7 +60,7 @@ void popident(ident &id)
     delete stack;
 }
 
-ident *newident(const char *name, int context = execcontext)
+static ident *newident(const char *name, int context = execcontext)
 {
     ident *id = idents->access(name);
     if(!id)
@@ -71,7 +71,7 @@ ident *newident(const char *name, int context = execcontext)
     return id;
 }
 
-void pusha(const char *name, char *action)
+static void pusha(const char *name, char *action)
 {
     ident *id = newident(name, execcontext);
     if(contextisolated[execcontext] && execcontext > id->context)
@@ -103,7 +103,7 @@ void pop(const char *name)
 
 COMMAND(push, "ss");
 COMMAND(pop, "s");
-void delalias(const char *name)
+static void delalias(const char *name)
 {
     ident *id = idents->access(name);
     if(!id || id->type != ID_ALIAS) return;
@@ -213,7 +213,7 @@ void setsvar(const char *name, const char *str, bool dofunc)
     if(dofunc && id->fun) ((void (__cdecl *)())id->fun)();            // call trigger function if available
 }
 
-void modifyvar(const char *name, int arg, char op)
+static void modifyvar(const char *name, int arg, char op)
 {
     ident *id = idents->access(name);
     if(!id) return;
@@ -250,7 +250,7 @@ void modifyvar(const char *name, int arg, char op)
     if(id->fun) ((void (__cdecl *)())id->fun)();
 }
 
-void modifyfvar(const char *name, float arg, char op)
+static void modifyfvar(const char *name, float arg, char op)
 {
     ident *id = idents->access(name);
     if(!id) return;
@@ -287,14 +287,14 @@ void modifyfvar(const char *name, float arg, char op)
     if(id->fun) ((void (__cdecl *)())id->fun)();
 }
 
-void addeq(char *name, int *arg) { modifyvar(name, *arg, '+'); }
-void subeq(char *name, int *arg) { modifyvar(name, *arg, '-'); }
-void muleq(char *name, int *arg) { modifyvar(name, *arg, '*'); }
-void diveq(char *name, int *arg) { modifyvar(name, *arg, '/'); }
-void addeqf(char *name, float *arg) { modifyfvar(name, *arg, '+'); }
-void subeqf(char *name, float *arg) { modifyfvar(name, *arg, '-'); }
-void muleqf(char *name, float *arg) { modifyfvar(name, *arg, '*'); }
-void diveqf(char *name, float *arg) { modifyfvar(name, *arg, '/'); }
+static void addeq(char *name, int *arg) { modifyvar(name, *arg, '+'); }
+static void subeq(char *name, int *arg) { modifyvar(name, *arg, '-'); }
+static void muleq(char *name, int *arg) { modifyvar(name, *arg, '*'); }
+static void diveq(char *name, int *arg) { modifyvar(name, *arg, '/'); }
+static void addeqf(char *name, float *arg) { modifyfvar(name, *arg, '+'); }
+static void subeqf(char *name, float *arg) { modifyfvar(name, *arg, '-'); }
+static void muleqf(char *name, float *arg) { modifyfvar(name, *arg, '*'); }
+static void diveqf(char *name, float *arg) { modifyfvar(name, *arg, '/'); }
 
 COMMANDN(+=, addeq, "si");
 COMMANDN(-=, subeq, "si");
@@ -318,7 +318,8 @@ const char *getalias(const char *name)
     ident *i = idents->access(name);
     return i && i->type==ID_ALIAS ? i->action : NULL;
 }
-void _getalias(char *name)
+
+static void _getalias(char *name)
 {
     string o;
     ident *id = idents->access(name);
@@ -358,7 +359,7 @@ bool addcommand(const char *name, void (*fun)(), const char *sig)
     return false;
 }
 
-char *parseexp(const char *&p, int right)             // parse any nested set of () or []
+static char *parseexp(const char *&p, int right)             // parse any nested set of () or []
 {
     int left = *p++;
     const char *word = p;
@@ -387,7 +388,7 @@ char *parseexp(const char *&p, int right)             // parse any nested set of
     return s;
 }
 
-char *lookup(char *n)                           // find value of ident referenced with $ in exp
+static char *lookup(char *n)                           // find value of ident referenced with $ in exp
 {
     ident *id = idents->access(n+1);
     if(id) switch(id->type)
@@ -444,9 +445,9 @@ char *conc(char **w, int n, bool space)
     return r;
 }
 
-VARN(numargs, _numargs, 25, 0, 0);
+static VARN(numargs, _numargs, 25, 0, 0);
 
-char *commandret = NULL;
+static char *commandret = NULL;
 
 void intret(int v)
 {
@@ -712,7 +713,7 @@ void resetcomplete()
     completeplayer = NULL;
 }
 
-bool nickcomplete(char *s)
+static bool nickcomplete(char *s)
 {
     if(!players.length()) return false;
 
@@ -777,7 +778,7 @@ static inline uint hthash(const completekey &k)
 static hashtable<completekey, completeval *> completedata;
 static hashtable<char *, completeval *> completions;
 
-void addcomplete(char *command, int type, char *dir, char *ext)
+static void addcomplete(char *command, int type, char *dir, char *ext)
 {
     if(type==COMPLETE_FILE)
     {
@@ -815,17 +816,17 @@ void addcomplete(char *command, int type, char *dir, char *ext)
     else completions[newstring(command)] = *val;
 }
 
-void addfilecomplete(char *command, char *dir, char *ext)
+static void addfilecomplete(char *command, char *dir, char *ext)
 {
     addcomplete(command, COMPLETE_FILE, dir, ext);
 }
 
-void addlistcomplete(char *command, char *list)
+static void addlistcomplete(char *command, char *list)
 {
     addcomplete(command, COMPLETE_LIST, list, NULL);
 }
 
-void addnickcomplete(char *command)
+static void addnickcomplete(char *command)
 {
     addcomplete(command, COMPLETE_NICK, NULL, NULL);
 }
@@ -834,7 +835,7 @@ COMMANDN(complete, addfilecomplete, "sss");
 COMMANDN(listcomplete, addlistcomplete, "ss");
 COMMANDN(nickcomplete, addnickcomplete, "s");
 
-void commandcomplete(char *s)
+static void commandcomplete(char *s)
 {
     if(*s!='/')
     {
@@ -943,9 +944,9 @@ void complete(char *s)
 }
 #endif
 
-const char *curcontext = NULL, *curinfo = NULL;
+static const char *curcontext = NULL, *curinfo = NULL;
 
-void scripterr()
+static void scripterr()
 {
     if(curcontext) conoutf("(%s: %s)", curcontext, curinfo);
     else conoutf("(from console or builtin)");
@@ -984,7 +985,7 @@ void exec(const char *cfgfile)
     if(!execfile(cfgfile)) conoutf("could not read \"%s\"", cfgfile);
 }
 
-void execdir(const char *dir)
+static void execdir(const char *dir)
 {
         if(dir[0])
         {
@@ -1002,8 +1003,8 @@ COMMAND(execdir, "s");
 // below the commands that implement a small imperative language. thanks to the semantics of
 // () and [] expressions, any control construct can be defined trivially.
 
-void ifthen(char *cond, char *thenp, char *elsep) { commandret = executeret(cond[0]!='0' ? thenp : elsep); }
-void loopa(char *var, int *times, char *body)
+static void ifthen(char *cond, char *thenp, char *elsep) { commandret = executeret(cond[0]!='0' ? thenp : elsep); }
+static void loopa(char *var, int *times, char *body)
 {
     int t = *times;
     if(t<=0) return;
@@ -1037,7 +1038,7 @@ void loopa(char *var, int *times, char *body)
     popident(*id);
     loop_level--;
 }
-void whilea(char *cond, char *body)
+static void whilea(char *cond, char *body)
 {
     loop_level++;
     while(execute(cond))
@@ -1053,13 +1054,13 @@ void whilea(char *cond, char *body)
     loop_level--;
 }
 
-void breaka() { if(loop_level) loop_skip = loop_break = true; }
-void continuea() { if(loop_level) loop_skip = true; }
+static void breaka() { if(loop_level) loop_skip = loop_break = true; }
+static void continuea() { if(loop_level) loop_skip = true; }
 
-void concat(char *s) { result(s); }
-void concatword(char *s) { result(s); }
+static void concat(char *s) { result(s); }
+static void concatword(char *s) { result(s); }
 
-void format(char **args, int numargs)
+static void format(char **args, int numargs)
 {
     if(numargs < 1)
     {
@@ -1104,7 +1105,7 @@ void explodelist(const char *s, vector<char *> &elems)
     }
 }
 
-void looplist(char *list, char *var, char *body)
+static void looplist(char *list, char *var, char *body)
 {
     ident *id = newident(var, execcontext);
     if(id->type!=ID_ALIAS) return;
@@ -1154,7 +1155,7 @@ char *indexlist(const char *s, int pos)
     return newstring(e, s-e);
 }
 
-int listlen(char *s)
+static int listlen(char *s)
 {
     int n = 0;
     whitespaceskip;
@@ -1162,12 +1163,12 @@ int listlen(char *s)
     return n;
 }
 
-void at(char *s, int *pos)
+static void at(char *s, int *pos)
 {
     commandret = indexlist(s, *pos);
 }
 
-int find(const char *s, const char *key)
+static int find(const char *s, const char *key)
 {
     whitespaceskip;
     int len = strlen(key);
@@ -1187,11 +1188,11 @@ int find(const char *s, const char *key)
     return -1;
 }
 
-void findlist(char *s, char *key)
+static void findlist(char *s, char *key)
 {
     intret(find(s, key));
 }
-void colora(char *s)
+static void colora(char *s)
 {
     if(s[0] && s[1]=='\0')
     {
@@ -1201,7 +1202,7 @@ void colora(char *s)
 }
 
 // Easily inject a string into various CubeScript punctuations
-void addpunct(char *s, int *type)
+static void addpunct(char *s, int *type)
 {
     switch(*type)
     {
@@ -1214,10 +1215,10 @@ void addpunct(char *s, int *type)
     }
 }
 
-void toLower(char *s) { result(strcaps(s, false)); }
-void toUpper(char *s) { result(strcaps(s, true)); }
+static void toLower(char *s) { result(strcaps(s, false)); }
+static void toUpper(char *s) { result(strcaps(s, true)); }
 
-void testchar(char *s, int *type)
+static void testchar(char *s, int *type)
 {
     bool istrue = false;
     switch(*type) {
@@ -1281,7 +1282,7 @@ char *strreplace(char *dest, const char *source, const char *search, const char 
 
 int stringsort(const char **a, const char **b) { return strcmp(*a, *b); }
 
-void sortlist(char *list)
+static void sortlist(char *list)
 {
     char* buf;
     buf = new char [strlen(list)]; strcpy(buf, ""); //output
@@ -1309,7 +1310,7 @@ void sortlist(char *list)
     delete [] buf;
  }
 
- void swapelements(char *list, char *v)
+ static void swapelements(char *list, char *v)
  {
     char* buf;
     buf = new char [strlen(list)]; strcpy(buf, ""); //output
@@ -1384,31 +1385,31 @@ COMMAND(sortlist, "c");
 COMMANDF(strreplace, "sss", (const char *source, const char *search, const char *replace) { string d; result(strreplace(d, source, search, replace)); });
 COMMAND(swapelements, "ss");
 
-void add(int *a, int *b)   { intret(*a + *b); }            COMMANDN(+, add, "ii");
-void mul(int *a, int *b)   { intret(*a * *b); }            COMMANDN(*, mul, "ii");
-void sub(int *a, int *b)   { intret(*a - *b); }            COMMANDN(-, sub, "ii");
-void div_(int *a, int *b)  { intret(*b ? (*a)/(*b) : 0); }    COMMANDN(div, div_, "ii");
-void mod_(int *a, int *b)   { intret(*b ? (*a)%(*b) : 0); }    COMMANDN(mod, mod_, "ii");
-void addf(float *a, float *b)   { floatret(*a + *b); }            COMMANDN(+f, addf, "ff");
-void mulf(float *a, float *b)   { floatret(*a * *b); }            COMMANDN(*f, mulf, "ff");
-void subf(float *a, float *b)   { floatret(*a - *b); }            COMMANDN(-f, subf, "ff");
-void divf_(float *a, float *b)  { floatret(*b ? (*a)/(*b) : 0); }    COMMANDN(divf, divf_, "ff");
-void modf_(float *a, float *b)   { floatret(*b ? fmod(*a, *b) : 0); }    COMMANDN(modf, modf_, "ff");
-void powf_(float *a, float *b)   { floatret(powf(*a, *b)); }    COMMANDN(powf, powf_, "ff");
-void not_(int *a) { intret((int)(!(*a))); }              COMMANDN(!, not_, "i");
-void equal(int *a, int *b) { intret((int)(*a == *b)); }    COMMANDN(=, equal, "ii");
-void notequal(int *a, int *b) { intret((int)(*a != *b)); } COMMANDN(!=, notequal, "ii");
-void lt(int *a, int *b)    { intret((int)(*a < *b)); }     COMMANDN(<, lt, "ii");
-void gt(int *a, int *b)    { intret((int)(*a > *b)); }     COMMANDN(>, gt, "ii");
-void lte(int *a, int *b)    { intret((int)(*a <= *b)); }   COMMANDN(<=, lte, "ii");
-void gte(int *a, int *b)    { intret((int)(*a >= *b)); }   COMMANDN(>=, gte, "ii");
+static void add(int *a, int *b)   { intret(*a + *b); }            COMMANDN(+, add, "ii");
+static void mul(int *a, int *b)   { intret(*a * *b); }            COMMANDN(*, mul, "ii");
+static void sub(int *a, int *b)   { intret(*a - *b); }            COMMANDN(-, sub, "ii");
+static void div_(int *a, int *b)  { intret(*b ? (*a)/(*b) : 0); }    COMMANDN(div, div_, "ii");
+static void mod_(int *a, int *b)   { intret(*b ? (*a)%(*b) : 0); }    COMMANDN(mod, mod_, "ii");
+static void addf(float *a, float *b)   { floatret(*a + *b); }            COMMANDN(+f, addf, "ff");
+static void mulf(float *a, float *b)   { floatret(*a * *b); }            COMMANDN(*f, mulf, "ff");
+static void subf(float *a, float *b)   { floatret(*a - *b); }            COMMANDN(-f, subf, "ff");
+static void divf_(float *a, float *b)  { floatret(*b ? (*a)/(*b) : 0); }    COMMANDN(divf, divf_, "ff");
+static void modf_(float *a, float *b)   { floatret(*b ? fmod(*a, *b) : 0); }    COMMANDN(modf, modf_, "ff");
+static void powf_(float *a, float *b)   { floatret(powf(*a, *b)); }    COMMANDN(powf, powf_, "ff");
+static void not_(int *a) { intret((int)(!(*a))); }              COMMANDN(!, not_, "i");
+static void equal(int *a, int *b) { intret((int)(*a == *b)); }    COMMANDN(=, equal, "ii");
+static void notequal(int *a, int *b) { intret((int)(*a != *b)); } COMMANDN(!=, notequal, "ii");
+static void lt(int *a, int *b)    { intret((int)(*a < *b)); }     COMMANDN(<, lt, "ii");
+static void gt(int *a, int *b)    { intret((int)(*a > *b)); }     COMMANDN(>, gt, "ii");
+static void lte(int *a, int *b)    { intret((int)(*a <= *b)); }   COMMANDN(<=, lte, "ii");
+static void gte(int *a, int *b)    { intret((int)(*a >= *b)); }   COMMANDN(>=, gte, "ii");
 
 COMMANDF(round, "f", (float *a) { intret((int)round(*a)); });
 COMMANDF(ceil,  "f", (float *a) { intret((int)ceil(*a)); });
 COMMANDF(floor, "f", (float *a) { intret((int)floor(*a)); });
 
 #define COMPAREF(opname, func, op) \
-    void func(float *a, float *b) { intret((int)((*a) op (*b))); } \
+    static void func(float *a, float *b) { intret((int)((*a) op (*b))); } \
     COMMANDN(opname, func, "ff")
 COMPAREF(=f, equalf, ==);
 COMPAREF(!=f, notequalf, !=);
@@ -1417,8 +1418,8 @@ COMPAREF(>f, gtf, >);
 COMPAREF(<=f, ltef, <=);
 COMPAREF(>=f, gtef, >=);
 
-void anda (char *a, char *b) { intret(execute(a)!=0 && execute(b)!=0); }
-void ora  (char *a, char *b) { intret(execute(a)!=0 || execute(b)!=0); }
+static void anda (char *a, char *b) { intret(execute(a)!=0 && execute(b)!=0); }
+static void ora  (char *a, char *b) { intret(execute(a)!=0 || execute(b)!=0); }
 
 COMMANDN(&&, anda, "ss");
 COMMANDN(||, ora, "ss");
@@ -1551,7 +1552,7 @@ int popscontext()
     return execcontext;
 }
 
-void scriptcontext(int *context, char *idname)
+static void scriptcontext(int *context, char *idname)
 {
     if(contextsealed) return;
     ident *id = idents->access(idname);
@@ -1560,14 +1561,14 @@ void scriptcontext(int *context, char *idname)
     if(c >= 0 && c < IEXC_NUM) id->context = c;
 }
 
-void isolatecontext(int *context)
+static void isolatecontext(int *context)
 {
     if(*context >= 0 && *context < IEXC_NUM && !contextsealed) contextisolated[*context] = true;
 }
 
-void sealcontexts() { contextsealed = true; }
+static void sealcontexts() { contextsealed = true; }
 
-bool allowidentaccess(ident *id) // check if ident is allowed in current context
+static bool allowidentaccess(ident *id) // check if ident is allowed in current context
 {
     ASSERT(execcontext >= 0 && execcontext < IEXC_NUM);
     if(!id) return false;
@@ -1582,31 +1583,31 @@ COMMAND(sealcontexts, "");
 #ifndef STANDALONE
 COMMANDF(watchingdemo, "", () { intret(watchingdemo); });
 
-void systime()
+static void systime()
 {
     result(numtime());
 }
 
-void timestamp_()
+static void timestamp_()
 {
     result(timestring(true, "%Y %m %d %H %M %S"));
 }
 
-void datestring()
+static void datestring()
 {
     result(timestring(true, "%c"));
 }
 
-void timestring_()
+static void timestring_()
 {
     const char *res = timestring(true, "%H:%M:%S");
     result(res[0] == '0' ? res + 1 : res);
 }
 
 extern int millis_() { extern int totalmillis; return totalmillis; }
-void strlen_(char *s) { intret(strlen(s)); }
+static void strlen_(char *s) { intret(strlen(s)); }
 
-void substr_(char *fs, int *pa, int *len)
+static void substr_(char *fs, int *pa, int *len)
 {
     int ia = *pa;
     int ilen = *len;
@@ -1619,7 +1620,7 @@ void substr_(char *fs, int *pa, int *len)
     result(fs+ia);
 }
 
-void strpos_(char *haystack, char *needle, int *occurence)
+static void strpos_(char *haystack, char *needle, int *occurence)
 {
     int position = -1;
     char *ptr = haystack;
@@ -1642,9 +1643,9 @@ void strpos_(char *haystack, char *needle, int *occurence)
     intret(position);
 }
 
-void l0(int *p, int *v) { string f; string r; formatstring(f)("%%0%dd", *p); formatstring(r)(f, *v); result(r); }
+static void l0(int *p, int *v) { string f; string r; formatstring(f)("%%0%dd", *p); formatstring(r)(f, *v); result(r); }
 
-void getscrext()
+static void getscrext()
 {
     switch(screenshottype)
     {
@@ -1738,7 +1739,7 @@ const char *currentserver(int i) // [client version]
 COMMANDF(curserver, "i", (int *i) { result(currentserver(*i)); });
 #endif
 
-void debugargs(char **args, int numargs)
+static void debugargs(char **args, int numargs)
 {
     printf("debugargs: ");
     loopi(numargs)

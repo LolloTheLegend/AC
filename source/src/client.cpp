@@ -7,9 +7,9 @@ VAR(connected, 1, 0, 0);
 
 ENetHost *clienthost = NULL;
 ENetPeer *curpeer = NULL, *connpeer = NULL;
-int connmillis = 0, connattempts = 0, discmillis = 0;
+static int connmillis = 0, connattempts = 0, discmillis = 0;
 SVAR(curdemofile, "n/a");
-extern bool clfail, cllock;
+extern bool clfail, cllock; // TODO: Lollo fix those 2 by importing the appropriate header
 extern int searchlan;
 
 int getclientnum() { return player1 ? player1->clientnum : -1; }
@@ -28,21 +28,21 @@ bool allowedittoggle()
     return allow;
 }
 
-void throttle();
+static void throttle();
 
 VARF(throttle_interval, 0, 5, 30, throttle());
 VARF(throttle_accel,    0, 2, 32, throttle());
 VARF(throttle_decel,    0, 2, 32, throttle());
 
-void throttle()
+static void throttle()
 {
     if(!curpeer) return;
     ASSERT(ENET_PEER_PACKET_THROTTLE_SCALE==32);
     enet_peer_throttle_configure(curpeer, throttle_interval*1000, throttle_accel, throttle_decel);
 }
 
-string clientpassword = "";
-int connectrole = CR_DEFAULT;
+static string clientpassword = "";
+static int connectrole = CR_DEFAULT;
 bool modprotocol = false;
 
 void abortconnect()
@@ -61,7 +61,7 @@ void abortconnect()
 #endif
 }
 
-void connectserv_(const char *servername, int serverport = 0, const char *password = NULL, int role = CR_DEFAULT)
+static void connectserv_(const char *servername, int serverport = 0, const char *password = NULL, int role = CR_DEFAULT)
 {
     if(serverport <= 0) serverport = CUBE_DEFAULT_SERVER_PORT;
     if(watchingdemo) enddemoplayback();
@@ -120,14 +120,14 @@ void connectserv(char *servername, int *serverport, char *password)
     connectserv_(servername, *serverport, password);
 }
 
-void connectadmin(char *servername, int *serverport, char *password)
+static void connectadmin(char *servername, int *serverport, char *password)
 {
     modprotocol = false;
     if(!password[0]) return;
     connectserv_(servername, *serverport, password, CR_ADMIN);
 }
 
-void lanconnect()
+static void lanconnect()
 {
     modprotocol = false;
     connectserv_(NULL);
@@ -139,25 +139,25 @@ void modconnectserv(char *servername, int *serverport, char *password)
     connectserv_(servername, *serverport, password);
 }
 
-void modconnectadmin(char *servername, int *serverport, char *password)
+static void modconnectadmin(char *servername, int *serverport, char *password)
 {
     modprotocol = true;
     if(!password[0]) return;
     connectserv_(servername, *serverport, password, CR_ADMIN);
 }
 
-void modlanconnect()
+static void modlanconnect()
 {
     modprotocol = true;
     connectserv_(NULL);
 }
 
-void whereami()
+static void whereami()
 {
     conoutf("you are at (%.2f,%.2f)", player1->o.x, player1->o.y);
 }
 
-void go_to(float *x, float *y, char *showmsg)
+static void go_to(float *x, float *y, char *showmsg)
 {
     if(player1->state != CS_EDITING) return;
     player1->newpos.x = *x;
@@ -231,7 +231,7 @@ void trydisconnect()
     disconnect(0, !discmillis);
 }
 
-void _toserver(char *text, int msg, int msgt)
+static void _toserver(char *text, int msg, int msgt)
 {
     bool toteam = text && text[0] == '%' && (m_teammode || team_isspect(player1->team));
     if(!toteam && text[0] == '%' && strlen(text) > 1) text++; // convert team-text to normal-text if no team-mode is active
@@ -252,12 +252,12 @@ void toserver(char *text)
     _toserver(text, SV_TEXT, SV_TEAMTEXT);
 }
 
-void toserverme(char *text)
+static void toserverme(char *text)
 {
     _toserver(text, SV_TEXTME, SV_TEAMTEXTME);
 }
 
-void echo(char *text)
+static void echo(char *text)
 {
     const char *s = strtok(text, "\n");
     do
@@ -268,8 +268,8 @@ void echo(char *text)
     while(s);
 }
 
-VARP(allowhudechos, 0, 1, 1);
-void hudecho(char *text)
+static VARP(allowhudechos, 0, 1, 1);
+static void hudecho(char *text)
 {
     const char *s = strtok(text, "\n");
     void (*outf)(const char *s, ...) = allowhudechos ? hudoutf : conoutf;
@@ -281,7 +281,7 @@ void hudecho(char *text)
     while(s);
 }
 
-void pm(char *text)
+static void pm(char *text)
 {
     if(!text || !text[0]) return;
     int cn = -1;
@@ -342,7 +342,7 @@ COMMANDN(disconnect, trydisconnect, "");
 COMMAND(whereami, "");
 COMMAND(go_to, "ffs");
 
-void current_version(char *text)
+static void current_version(char *text)
 {
     int version = atoi(text);
     if (version && AC_VERSION<version)
@@ -366,7 +366,7 @@ void cleanupclient()
 
 // collect c2s messages conveniently
 
-vector<uchar> messages;
+static vector<uchar> messages;
 
 void addmsg(int type, const char *fmt, ...)
 {
@@ -428,8 +428,8 @@ void c2skeepalive()
     if(clienthost && (curpeer || connpeer)) enet_host_service(clienthost, NULL, 0);
 }
 
-extern string masterpwd;
-bool sv_pos = true;
+extern string masterpwd; // TODO: Lollo fix this
+static bool sv_pos = true;
 
 void c2sinfo(playerent *d)                  // send update to the server
 {
@@ -660,7 +660,7 @@ void gets2c()           // get updates from the server
 
 // for AUTH:
 
-vector<authkey *> authkeys;
+static vector<authkey *> authkeys;
 
 VARP(autoauth, 0, 1, 1);
 
@@ -671,20 +671,20 @@ authkey *findauthkey(const char *desc)
     return NULL;
 }
 
-void addauthkey(const char *name, const char *key, const char *desc)
+static void addauthkey(const char *name, const char *key, const char *desc)
 {
     loopvrev(authkeys) if(!strcmp(authkeys[i]->desc, desc) && !strcmp(authkeys[i]->name, name)) delete authkeys.remove(i);
     if(name[0] && key[0]) authkeys.add(new authkey(name, key, desc));
 }
 
-bool _hasauthkey(const char *name, const char *desc)
+static bool _hasauthkey(const char *name, const char *desc)
 {
     if(!name[0] && !desc[0]) return authkeys.length() > 0;
     loopvrev(authkeys) if(!strcmp(authkeys[i]->desc, desc) && !strcmp(authkeys[i]->name, name)) return true;
     return false;
 }
 
-void genauthkey(const char *secret)
+static void genauthkey(const char *secret)
 {
     if(!secret[0]) { conoutf("you must specify a secret password"); return; }
     vector<char> privkey, pubkey;
@@ -693,7 +693,7 @@ void genauthkey(const char *secret)
     conoutf("public key: %s", pubkey.getbuf());
 }
 
-void saveauthkeys()
+static void saveauthkeys()
 {
     if(authkeys.length())
     {
@@ -729,10 +729,10 @@ COMMANDF(auth, "s", (char *desc) { intret(tryauth(desc)); });
 
 // sendmap/getmap commands, should be replaced by more intuitive map downloading
 
-vector<char *> securemaps;
+static vector<char *> securemaps;
 
-void resetsecuremaps() { securemaps.deletearrays(); }
-void securemap(char *map) { if(map) securemaps.add(newstring(map)); }
+static void resetsecuremaps() { securemaps.deletearrays(); }
+static void securemap(char *map) { if(map) securemaps.add(newstring(map)); }
 bool securemapcheck(const char *map, bool msg)
 {
     if(strstr(map, "maps/")==map || strstr(map, "maps\\")==map) map += strlen("maps/");
@@ -752,7 +752,7 @@ bool securemapcheck(const char *map, bool msg)
     return false;
 }
 
-void sendmap(char *mapname)
+static void sendmap(char *mapname)
 {
     if(!*mapname) mapname = getclientmap();
     if(securemapcheck(mapname)) return;
@@ -814,7 +814,7 @@ void getmap(char *name, char *callback)
     }
 }
 
-void deleteservermap(char *mapname)
+static void deleteservermap(char *mapname)
 {
     const char *name = behindpath(mapname);
     if(!*name || securemapcheck(name)) return;
@@ -847,7 +847,7 @@ void listdemos()
     addmsg(SV_LISTDEMOS, "r");
 }
 
-void shiftgametime(int newmillis)
+static void shiftgametime(int newmillis)
 {
     newmillis = max(0, newmillis);
     int gamemillis = gametimecurrent + (lastmillis - lastgametimeupdate);
@@ -869,12 +869,12 @@ void shiftgametime(int newmillis)
     }
 }
 
-void setminutesremaining(int *minutes)
+static void setminutesremaining(int *minutes)
 {
     shiftgametime(gametimemaximum - (*minutes)*60000);
 }
 
-void rewinddemo(int *seconds)
+static void rewinddemo(int *seconds)
 {
     int gamemillis = gametimecurrent+(lastmillis-lastgametimeupdate);
     shiftgametime(gamemillis - (*seconds)*1000);
@@ -893,18 +893,18 @@ COMMANDN(rewind, rewinddemo, "i");
 // packages auto - downloader
 
 // arrays
-vector<pckserver *> pckservers;
-hashtable<const char *, package *> pendingpackages;
+static vector<pckserver *> pckservers;
+static hashtable<const char *, package *> pendingpackages;
 
 // cubescript
 VARP(autodownload, 0, 1, 1);
 
-void resetpckservers()
+static void resetpckservers()
 {
     pckservers.deletecontents();
 }
 
-void addpckserver(char *addr)
+static void addpckserver(char *addr)
 {
     pckserver *srcserver = new pckserver();
     srcserver->addr = newstring(addr);
@@ -930,7 +930,7 @@ void setupcurl()
 }
 
 // detect the "nearest" server
-int pckserversort(pckserver **a, pckserver **b)
+static int pckserversort(pckserver **a, pckserver **b)
 {
     if((*a)->ping < 0) return ((*b)->ping < 0) ? 0 : 1;
     if((*b)->ping < 0) return -1;
@@ -938,9 +938,9 @@ int pckserversort(pckserver **a, pckserver **b)
     return (*a)->ping == (*b)->ping ? 0 : ((*a)->ping < (*b)->ping ? -1 : 1);
 }
 
-SDL_Thread* pingpcksrvthread = NULL;
-SDL_mutex *pingpcksrvlock = NULL;
-int pingpckservers(void *data)
+static SDL_Thread* pingpcksrvthread = NULL;
+static SDL_mutex *pingpcksrvlock = NULL;
+static int pingpckservers(void *data)
 {
     SDL_mutexP(pingpcksrvlock);
     vector<pckserver> serverstoping;
@@ -1001,7 +1001,7 @@ size_t write_callback(void *ptr, size_t size, size_t nmemb, FILE *stream)
     return fwrite(ptr, size, nmemb, stream);
 }
 
-int progress_callback_dlpackage(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow)
+static int progress_callback_dlpackage(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow)
 {
     package *pck = (package *)clientp;
     loadingscreen(_("downloading package %d out of %d...\n%s %.0f/%.0f KB (%.1f%%)\n(ESC to cancel)"), pck->number + 1, pck->number + pendingpackages.numelems,
@@ -1015,7 +1015,7 @@ int progress_callback_dlpackage(void *clientp, double dltotal, double dlnow, dou
     return 0;
 }
 
-int processdownload(package *pck)
+static int processdownload(package *pck)
 {
     string tmpname = "";
     copystring(tmpname, findfile(path("tmp", true), "rb"));
@@ -1055,7 +1055,7 @@ int processdownload(package *pck)
 }
 
 // download a package
-double dlpackage(package *pck)
+static double dlpackage(package *pck)
 {
     if(!pck || !pck->source) return false;
     const char *tmpname = findfile(path("tmp", true), "wb");
@@ -1121,7 +1121,7 @@ double dlpackage(package *pck)
     return (!result && httpresult == 200) ? dlsize : 0;
 }
 
-int lastpackagesdownload = 0;
+static int lastpackagesdownload = 0;
 int downloadpackages()
 {
     if(!pendingpackages.numelems) return 0;

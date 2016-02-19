@@ -1,10 +1,10 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+#include "audiomanager.h"
 #include "protocol.h"
 #include "weapon.h"
 #include "model.h"
-#include "sound.h"
 
 enum                            // static entity types
 {
