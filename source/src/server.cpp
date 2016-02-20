@@ -2186,11 +2186,11 @@ struct voteinfo
     }
 };
 
-static voteinfo *curvote = NULL;
+static voteinfo *server_curvote = NULL;
 
 bool svote(int sender, int vote, ENetPacket *msg) // true if the vote was placed successfully
 {
-    if(!curvote || !valid_client(sender) || vote < VOTE_YES || vote > VOTE_NO) return false;
+    if(!server_curvote || !valid_client(sender) || vote < VOTE_YES || vote > VOTE_NO) return false;
     if(clients[sender]->vote != VOTE_NEUTRAL)
     {
         sendf(sender, 1, "ri2", SV_CALLVOTEERR, VOTEE_MUL);
@@ -2202,7 +2202,7 @@ bool svote(int sender, int vote, ENetPacket *msg) // true if the vote was placed
 
         clients[sender]->vote = vote;
         logline(ACLOG_DEBUG,"[%s] client %s voted %s", clients[sender]->hostname, clients[sender]->name, vote == VOTE_NO ? "no" : "yes");
-        curvote->evaluate();
+        server_curvote->evaluate();
         return true;
     }
 }
@@ -2210,8 +2210,8 @@ bool svote(int sender, int vote, ENetPacket *msg) // true if the vote was placed
 void scallvotesuc(voteinfo *v)
 {
     if(!v->isvalid()) return;
-    DELETEP(curvote);
-    curvote = v;
+    DELETEP(server_curvote);
+    server_curvote = v;
     clients[v->owner]->lastvotecall = servmillis;
     clients[v->owner]->nvotes--; // successful votes do not count as abuse
     sendf(v->owner, 1, "ri", SV_CALLVOTESUC);
@@ -2244,7 +2244,7 @@ bool scallvote(voteinfo *v, ENetPacket *msg) // true if a regular vote was calle
     if( !v || !v->isvalid() || (v->boot && (!b || cn2boot == v->owner) ) ) error = VOTEE_INVALID;
     else if( v->action->role > c->role ) error = VOTEE_PERMISSION;
     else if( !(area & v->action->area) ) error = VOTEE_AREA;
-    else if( curvote && curvote->result==VOTE_NEUTRAL ) error = VOTEE_CUR;
+    else if( server_curvote && server_curvote->result==VOTE_NEUTRAL ) error = VOTEE_CUR;
     else if( v->type == SA_MAP && v->num1 >= GMODE_NUM && map_queued ) error = VOTEE_NEXT;
     else if( c->role == CR_DEFAULT && v->action->isdisabled() ) error = VOTEE_DISABLED;
     else if( (c->lastvotecall && servmillis - c->lastvotecall < 60*1000 && c->role != CR_ADMIN && numclients()>1) || c->nvotes > 3 ) error = VOTEE_MAX;
@@ -2272,7 +2272,7 @@ bool scallvote(voteinfo *v, ENetPacket *msg) // true if a regular vote was calle
     }
 }
 
-void callvotepacket (int cn, voteinfo *v = curvote)
+void callvotepacket (int cn, voteinfo *v = server_curvote)
 { // FIXME, it would be far smart if the msg buffer from SV_CALLVOTE was simply saved
     int n_yes = 0, n_no = 0;
     loopv(clients) if(clients[i]->type!=ST_EMPTY)
@@ -2341,7 +2341,7 @@ void changeclientrole(int client, int role, char *pwd, bool force)
         if(role > CR_DEFAULT) sendiplist(client);
     }
     else if(pwd && pwd[0]) disconnect_client(client, DISC_SOPLOGINFAIL); // avoid brute-force
-    if(curvote) curvote->evaluate();
+    if(server_curvote) server_curvote->evaluate();
 }
 
 void senddisconnectedscores(int cn)
@@ -2398,7 +2398,7 @@ void disconnect_client(int n, int reason)
     if(reason>=0) enet_peer_disconnect(c.peer, reason);
     clients[n]->zap();
     sendf(-1, 1, "rii", SV_CDIS, n);
-    if(curvote) curvote->evaluate();
+    if(server_curvote) server_curvote->evaluate();
     if(*scoresaved && mastermode == MM_MATCH) senddisconnectedscores(-1);
 }
 
@@ -2776,7 +2776,7 @@ void process(ENetPacket *packet, int sender, int chan)
         else if(cl->type==ST_TCPIP) senddisconnectedscores(sender);
         sendinitclient(*cl);
         if(clientrole != CR_DEFAULT) changeclientrole(sender, clientrole, NULL, true);
-        if( curvote && curvote->result == VOTE_NEUTRAL ) callvotepacket (cl->clientnum);
+        if( server_curvote && server_curvote->result == VOTE_NEUTRAL ) callvotepacket (cl->clientnum);
 
         // send full IPs to admins
         loopv(clients)
@@ -3897,10 +3897,10 @@ void serverslice(uint timeout)   // main server update, called from cube main lo
         if ( scl.afk_limit && mastermode == MM_OPEN && next_afk_check < servmillis && gamemillis > 20 * 1000 ) check_afk();
     }
 
-    if(curvote)
+    if(server_curvote)
     {
-        if(!curvote->isalive()) curvote->evaluate(true);
-        if(curvote->result!=VOTE_NEUTRAL) DELETEP(curvote);
+        if(!server_curvote->isalive()) server_curvote->evaluate(true);
+        if(server_curvote->result!=VOTE_NEUTRAL) DELETEP(server_curvote);
     }
 
     int nonlocalclients = numnonlocalclients();

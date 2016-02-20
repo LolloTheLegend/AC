@@ -1,7 +1,12 @@
 #ifndef SOURCE_SRC_CLIENTGAME_H_
 #define SOURCE_SRC_CLIENTGAME_H_
 
+#include "tools.h"
+#include "protocol.h"
 #include "entity.h"
+
+class playerent;
+class botent;
 
 struct serverstate { int autoteam; int mastermode; int matchteamsize; void reset() { autoteam = mastermode = matchteamsize = 0; }};
 
@@ -21,8 +26,8 @@ extern flaginfo flaginfos[2];
 extern bool intermission;
 extern int arenaintermission;
 extern struct serverstate servstate;
-extern playerent* player1;
-extern vector<playerent *> players;
+extern playerent *player1;              // special client ent that receives input and acts as camera
+extern vector<playerent *> players;     // all the other clients (in multiplayer)
 extern int lastmillis, totalmillis, nextmillis;
 extern int lasthit;
 extern int curtime;

@@ -10,26 +10,19 @@ extern header hdr;                      // current map header
 extern int sfactor, ssize;              // ssize = 2^sfactor
 extern int cubicsize, mipsize;          // cubicsize = ssize^2
 extern physent *camera1;                // camera representing perspective of player, usually player1
-extern playerent *player1;              // special client ent that receives input and acts as camera
-extern vector<playerent *> players;     // all the other clients (in multiplayer)
 extern vector<bounceent *> bounceents;
 extern bool editmode;
 extern int unsavededits;
 extern vector<entity> ents;             // map entities
 extern vector<int> eh_ents;             // edithide entities
 extern vec worldpos, camup, camright, camdir; // current target of the crosshair in the world
-extern int lastmillis, totalmillis, nextmillis; // last time
-extern int curtime;                     // current frame time
 extern int interm;
-extern int gamemode, nextmode;
 extern int gamespeed;
 extern int xtraverts;
 extern float fovy, aspect;
 extern int farplane;
 extern bool minimap, reflecting, refracting;
 extern int stenciling, stencilshadow;
-extern bool intermission;
-extern int arenaintermission;
 extern hashtable<char *, enet_uint32> mapinfo;
 extern int hwtexsize, hwmaxaniso;
 extern int numspawn[3], maploaded, numflagspawn[2];
@@ -377,7 +370,6 @@ extern void resetwater();
 // client
 extern void neterr(const char *s);
 extern void changeteam(int team, bool respawn = true); // deprecated?
-extern void newteam(char *name);
 
 // serverms
 bool requestmasterf(const char *fmt, ...); // for AUTH et al
@@ -385,36 +377,7 @@ bool requestmasterf(const char *fmt, ...); // for AUTH et al
 // :for AUTH
 
 // clientgame
-extern flaginfo flaginfos[2];
-extern int sessionid;
-extern int gametimecurrent;
-extern int gametimemaximum;
-extern int lastgametimeupdate;
-struct serverstate { int autoteam; int mastermode; int matchteamsize; void reset() { autoteam = mastermode = matchteamsize = 0; }};
-extern struct serverstate servstate;
-extern void updateworld(int curtime, int lastmillis);
-extern void resetmap(bool mrproper = true);
-extern void startmap(const char *name, bool reset = true, bool norespawn = false);
 extern void changemap(const char *name);
-extern void initclient();
-extern void deathstate(playerent *pl);
-extern void spawnplayer(playerent *d);
-extern void dodamage(int damage, playerent *pl, playerent *actor, int gun = -1, bool gib = false, bool local = true);
-extern void dokill(playerent *pl, playerent *act, bool gib = false, int gun = 0);
-extern playerent *newplayerent();
-extern botent *newbotent();
-extern void freebotent(botent *d);
-extern char *getclientmap();
-extern int getclientmode();
-extern void zapplayer(playerent *&d);
-extern playerent *getclient(int cn);
-extern playerent *newclient(int cn);
-extern void timeupdate(int milliscur, int millismax); // was (int timeremain);
-extern void respawnself();
-extern void setskin(playerent *pl, int skin, int team = -1);
-extern void callvote(int type, const char *arg1 = NULL, const char *arg2 = NULL, const char *arg3 = NULL);
-extern void addsleep(int msec, const char *cmd, bool persist = false);
-extern void resetsleep(bool force = false);
 //game mode extras
 extern void flagpickup(int fln);
 extern void tryflagdrop(bool manual = false);
@@ -424,37 +387,11 @@ extern void flagstolen(int flag, int act);
 extern void flagdropped(int flag, float x, float y, float z);
 extern void flaginbase(int flag);
 extern void flagidle(int flag);
-extern void flagmsg(int flag, int message, int actor, int flagtime);
 extern void arenarespawn();
-extern bool tryrespawn();
-extern void gotoplayerstart(playerent *d, entity *e);
-extern void findplayerstart(playerent *d, bool mapcenter = false, int arenaspawn = -1);
 extern void serveropcommand(int cmd, int arg1);
-extern void refreshsopmenu(void *menu, bool init);
-extern char *colorname(playerent *d, char *name = NULL, const char *prefix = "");
-extern char *colorping(int ping);
-extern char *colorpj(int pj);
-extern const char *highlight(const char *text);
-extern void togglespect();
-extern playerent *updatefollowplayer(int shiftdirection = 0);
-extern void spectatemode(int mode);
 
-struct votedisplayinfo
-{
-    playerent *owner;
-    int type, stats[VOTE_NUM], result, millis;
-    string desc;
-    bool localplayervoted;
-    votedisplayinfo() : owner(NULL), result(VOTE_NEUTRAL), millis(0), localplayervoted(false) { loopi(VOTE_NUM) stats[i] = VOTE_NEUTRAL; }
-};
-
-extern votedisplayinfo *newvotedisplayinfo(playerent *owner, int type, const char *arg1, const char *arg2, const char *arg3 = "");
-extern void callvotesuc();
-extern void callvoteerr(int e);
 extern void displayvote(votedisplayinfo *v);
 extern void voteresult(int v);
-extern void votecount(int v);
-extern void clearvote();
 
 // scoreboard
 struct discscore { int team, flags, frags, deaths, points; char name[MAXNAMELEN + 1]; };
@@ -757,7 +694,6 @@ extern int curscontext();
 extern int screenshottype;
 
 // server
-extern int modeacronyms;
 extern void servertoclient(int chan, uchar *buf, int len, bool demo = false);
 extern void localservertoclient(int chan, uchar *buf, int len, bool demo = false);
 extern const char *modestr(int n, bool acronyms = false);
@@ -806,7 +742,6 @@ extern bool valid_client(int cn);
 extern void extinfo_cnbuf(ucharbuf &p, int cn);
 extern void extinfo_statsbuf(ucharbuf &p, int pid, int bpos, ENetSocket &pongsock, ENetAddress &addr, ENetBuffer &buf, int len, int *csend);
 extern void extinfo_teamscorebuf(ucharbuf &p);
-extern char *votestring(int type, char *arg1, char *arg2, char *arg3);
 extern int wizardmain(int argc, char **argv);
 
 // demo

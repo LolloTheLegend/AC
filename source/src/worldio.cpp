@@ -527,7 +527,6 @@ void showmapdims()
 }
 COMMAND(showmapdims, "");
 
-extern void preparectf(bool cleanonly = false);
 int numspawn[3], maploaded = 0, numflagspawn[2];
 VAR(curmaprevision, 1, 0, 0);
 

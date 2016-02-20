@@ -32,6 +32,7 @@
 #include "console.h"
 #include "docs.h"
 #include "client.h"
+#include "clientgame.h"
 #include "protos.h"                     // external function decls
 
 #endif

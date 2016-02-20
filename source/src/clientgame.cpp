@@ -1,5 +1,6 @@
 // clientgame.cpp: core game related stuff
 
+#include "clientgame.h"
 #include "cube.h"
 #include "bot/bot.h"
 
@@ -1048,7 +1049,7 @@ void zapplayerflags(playerent *p)
     loopi(2) if(flaginfos[i].state==CTFF_STOLEN && flaginfos[i].actor==p) initflag(i);
 }
 
-void preparectf(bool cleanonly=false)
+void preparectf(bool cleanonly)
 {
     loopi(2) initflag(i);
     if(!cleanonly)
