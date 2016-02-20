@@ -63,7 +63,6 @@ set(
         ${ASS_CUBE_SRCS_PATH}/rendermodel.cpp
         ${ASS_CUBE_SRCS_PATH}/renderparticles.cpp
         ${ASS_CUBE_SRCS_PATH}/rendertext.cpp
-        ${ASS_CUBE_SRCS_PATH}/rndmap.cpp
         ${ASS_CUBE_SRCS_PATH}/scoreboard.cpp
         ${ASS_CUBE_SRCS_PATH}/serverms.cpp
         ${ASS_CUBE_SRCS_PATH}/server.cpp

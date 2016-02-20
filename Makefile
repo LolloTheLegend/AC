@@ -1048,33 +1048,6 @@ source/src/rendertext.cpp.s:
 	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/rendertext.cpp.s
 .PHONY : source/src/rendertext.cpp.s
 
-source/src/rndmap.o: source/src/rndmap.cpp.o
-
-.PHONY : source/src/rndmap.o
-
-# target to build an object file
-source/src/rndmap.cpp.o:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/rndmap.cpp.o
-.PHONY : source/src/rndmap.cpp.o
-
-source/src/rndmap.i: source/src/rndmap.cpp.i
-
-.PHONY : source/src/rndmap.i
-
-# target to preprocess a source file
-source/src/rndmap.cpp.i:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/rndmap.cpp.i
-.PHONY : source/src/rndmap.cpp.i
-
-source/src/rndmap.s: source/src/rndmap.cpp.s
-
-.PHONY : source/src/rndmap.s
-
-# target to generate assembly for a file
-source/src/rndmap.cpp.s:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/rndmap.cpp.s
-.PHONY : source/src/rndmap.cpp.s
-
 source/src/scoreboard.o: source/src/scoreboard.cpp.o
 
 .PHONY : source/src/scoreboard.o
@@ -1739,9 +1712,6 @@ help:
 	@echo "... source/src/rendertext.o"
 	@echo "... source/src/rendertext.i"
 	@echo "... source/src/rendertext.s"
-	@echo "... source/src/rndmap.o"
-	@echo "... source/src/rndmap.i"
-	@echo "... source/src/rndmap.s"
 	@echo "... source/src/scoreboard.o"
 	@echo "... source/src/scoreboard.i"
 	@echo "... source/src/scoreboard.s"

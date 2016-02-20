@@ -438,9 +438,6 @@ struct traceresult_s
 void TraceLine(vec from, vec to, dynent *pTracer, bool CheckPlayers, traceresult_s *tr, bool SkipTags=false);
 extern int burstshotssettings[NUMGUNS];
 
-// rndmap
-extern void perlinarea(block &b, int scale, int seed, int psize);
-
 #endif
 
 // protocol [client and server]
