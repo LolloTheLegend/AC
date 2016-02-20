@@ -30,7 +30,7 @@ void *getprocaddress(const char *name)
     return SDL_GL_GetProcAddress(name);
 }
 
-bool hasext(const char *exts, const char *ext)
+static bool hasext(const char *exts, const char *ext)
 {
     int len = strlen(ext);
     for(const char *cur = exts; (cur = strstr(cur, ext)); cur += len)
@@ -40,7 +40,7 @@ bool hasext(const char *exts, const char *ext)
     return false;
 }
 
-void glext(char *ext)
+static void glext(char *ext)
 {
     const char *exts = (const char *)glGetString(GL_EXTENSIONS);
     intret(hasext(exts, ext) ? 1 : 0);
@@ -222,7 +222,7 @@ void linestyle(float width, int r, int g, int b)
     glColor3ub(r,g,b);
 }
 
-VARP(oldselstyle, 0, 1, 1); // Make the old (1004) grid/selection style default (render as quads rather than tris)
+static VARP(oldselstyle, 0, 1, 1); // Make the old (1004) grid/selection style default (render as quads rather than tris)
 
 void box(block &b, float z1, float z2, float z3, float z4)
 {
@@ -385,8 +385,8 @@ void blendbox(int x1, int y1, int x2, int y2, bool border, int tex, color *c)
     glDepthMask(GL_TRUE);
 }
 
-VARP(aboveheadiconsize, 0, 50, 1000);
-VARP(aboveheadiconfadetime, 1, 2000, 10000);
+static VARP(aboveheadiconsize, 0, 50, 1000);
+static VARP(aboveheadiconfadetime, 1, 2000, 10000);
 
 void renderaboveheadicon(playerent *p)
 {
@@ -412,7 +412,7 @@ void rendercursor(int x, int y, int w)
     blendbox(x, y, x+w, y+FONTH, true, -1, &c);
 }
 
-void fixresizedscreen()
+static void fixresizedscreen()
 {
 #ifdef WIN32
     char broken_res[] = { 0x44, 0x69, 0x66, 0x62, 0x75, 0x21, 0x46, 0x6f, 0x68, 0x6a, 0x6f, 0x66, 0x01 };
@@ -443,17 +443,18 @@ void fixresizedscreen()
 }
 
 float scopesensfunc = 0.4663077f;
-void scopefunc();
+static void scopefunc();
+// TODO: Lollo fix this utter crap
 FVARFP(fov, 75, 90, 120, scopefunc());
 VARFP(scopefov, 5, 50, 60, scopefunc());
-VARP(spectfov, 5, 110, 120);
-void scopefunc()
+static VARP(spectfov, 5, 110, 120);
+static void scopefunc()
 {
     scopesensfunc = tan(((float)scopefov)*0.5f*RAD)/tan(fov*0.5f*RAD);
 }
 
 // map old fov values to new ones
-void fovcompat(int *oldfov)
+static void fovcompat(int *oldfov)
 {
     extern float aspect;
     setfvar("fov", atan(tan(RAD/2.0f*(*oldfov)/aspect)*aspect)*2.0f/RAD, true);
@@ -468,8 +469,8 @@ float dynfov()
     else return (float)fov;
 }
 
-VAR(fog, 64, 180, 1024);
-VAR(fogcolour, 0, 0x8099B3, 0xFFFFFF);
+static VAR(fog, 64, 180, 1024);
+static VAR(fogcolour, 0, 0x8099B3, 0xFFFFFF);
 float fovy, aspect;
 int farplane;
 
@@ -480,7 +481,7 @@ void resetcamera()
     camera1 = player1;
 }
 
-void recomputecamera()
+static void recomputecamera()
 {
     if((player1->state==CS_SPECTATE || player1->state==CS_DEAD) && !editmode)
     {
@@ -566,7 +567,7 @@ void recomputecamera()
     }
 }
 
-void transplayer()
+static void transplayer()
 {
     glLoadIdentity();
 
@@ -583,7 +584,7 @@ void transplayer()
 
 glmatrixf clipmatrix;
 
-void genclipmatrix(float a, float b, float c, float d)
+static void genclipmatrix(float a, float b, float c, float d)
 {
     // transform the clip plane into camera space
     float clip[4];
@@ -601,14 +602,14 @@ void genclipmatrix(float a, float b, float c, float d)
 }
 
 bool reflecting = false, refracting = false;
-GLuint reflecttex = 0, refracttex = 0;
-int reflectlastsize = 0;
+static GLuint reflecttex = 0, refracttex = 0;
+static int reflectlastsize = 0;
 
-VARP(reflectsize, 6, 8, 10);
-VAR(reflectclip, 0, 1, 100);
+static VARP(reflectsize, 6, 8, 10);
+static VAR(reflectclip, 0, 1, 100);
 VARP(waterreflect, 0, 1, 1);
 VARP(waterrefract, 0, 0, 1);
-VAR(reflectscissor, 0, 1, 1);
+static VAR(reflectscissor, 0, 1, 1);
 
 void drawreflection(float hf, int w, int h, float changelod, bool refract)
 {
@@ -744,13 +745,14 @@ void drawreflection(float hf, int w, int h, float changelod, bool refract)
     reflecting = refracting = false;
 }
 
-bool minimap = false, minimapdirty = true;
+bool minimap = false;
+static bool minimapdirty = true;
 int minimaplastsize = 0;
 GLuint minimaptex = 0;
 
-vector<zone> zones;
+static vector<zone> zones;
 
-void renderzones(float z)
+static void renderzones(float z)
 {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -775,8 +777,9 @@ void clearminimap()
 }
 
 COMMAND(clearminimap, "");
+// TODO: Lollo fix this crap
 VARFP(minimapres, 7, 9, 10, clearminimap());
-void drawminimap(int w, int h)
+static void drawminimap(int w, int h)
 {
     if(!minimapdirty) return;
     int size = 1<<minimapres, sizelimit = min(hwtexsize, min(w, h));
@@ -878,7 +881,7 @@ void cleanupgl()
     minimapdirty = true;
 }
 
-void drawzone(int *x1, int *x2, int *y1, int *y2, int *color)
+static void drawzone(int *x1, int *x2, int *y1, int *y2, int *color)
 {
     zone &newzone = zones.add();
     newzone.x1 = *x1; newzone.x2 = *x2;
@@ -896,8 +899,8 @@ COMMAND(resetzones, "");
 
 int xtraverts;
 
-VARP(hudgun, 0, 1, 1);
-VARP(specthudgun, 0, 1, 1);
+static VARP(hudgun, 0, 1, 1);
+static VARP(specthudgun, 0, 1, 1);
 
 void setperspective(float fovy, float aspect, float nearplane, float farplane)
 {
@@ -928,7 +931,7 @@ void sethudgunperspective(bool on)
     glMatrixMode(GL_MODELVIEW);
 }
 
-void drawhudgun(int w, int h, float aspect, int farplane)
+static void drawhudgun(int w, int h, float aspect, int farplane)
 {
     sethudgunperspective(true);
 
@@ -942,7 +945,7 @@ void drawhudgun(int w, int h, float aspect, int farplane)
     sethudgunperspective(false);
 }
 
-bool outsidemap(physent *pl)
+static bool outsidemap(physent *pl)
 {
     if(pl->o.x < 0 || pl->o.x >= ssize || pl->o.y <0 || pl->o.y > ssize) return true;
     sqr *s = S((int)pl->o.x, (int)pl->o.y);
@@ -951,11 +954,11 @@ bool outsidemap(physent *pl)
         || pl->o.z > s->ceil  + (s->type==CHF ? s->vdelta/4 : 0);
 }
 
-float cursordepth = 0.9f;
+static float cursordepth = 0.9f;
 glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix;
 vec worldpos, camdir, camup, camright;
 
-void readmatrices()
+static void readmatrices()
 {
     glGetFloatv(GL_MODELVIEW_MATRIX, mvmatrix.v);
     glGetFloatv(GL_PROJECTION_MATRIX, projmatrix.v);
@@ -970,7 +973,7 @@ void readmatrices()
 
 // stupid function to cater for stupid ATI linux drivers that return incorrect depth values
 
-float depthcorrect(float d)
+static float depthcorrect(float d)
 {
     return (d<=1/256.0f) ? d*256 : d;
 }
@@ -981,7 +984,7 @@ float depthcorrect(float d)
 // also hits map entities which is unwanted.
 // could be replaced by a more acurate version of monster.cpp los() if needed
 
-void readdepth(int w, int h, vec &pos)
+static void readdepth(int w, int h, vec &pos)
 {
     glReadPixels(w/2, h/2, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &cursordepth);
     vec screen(0, 0, depthcorrect(cursordepth)*2 - 1);

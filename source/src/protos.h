@@ -9,15 +9,9 @@ extern sqr *world, *wmip[];             // map data, the mips are sequential 2D 
 extern header hdr;                      // current map header
 extern int sfactor, ssize;              // ssize = 2^sfactor
 extern int cubicsize, mipsize;          // cubicsize = ssize^2
-extern physent *camera1;                // camera representing perspective of player, usually player1
 extern vector<bounceent *> bounceents;
-extern vec worldpos, camup, camright, camdir; // current target of the crosshair in the world
 extern int interm;
 extern int gamespeed;
-extern int xtraverts;
-extern float fovy, aspect;
-extern int farplane;
-extern bool minimap, reflecting, refracting;
 extern int stenciling, stencilshadow;
 extern hashtable<char *, enet_uint32> mapinfo;
 extern int numspawn[3], maploaded, numflagspawn[2];
@@ -37,25 +31,6 @@ extern int verbose;
 
 extern bool hasTE, hasMT, hasMDA, hasDRE, hasstencil, hasST2, hasSTW, hasSTS, hasAF;
 
-// GL_ARB_multitexture
-extern PFNGLACTIVETEXTUREARBPROC       glActiveTexture_;
-extern PFNGLCLIENTACTIVETEXTUREARBPROC glClientActiveTexture_;
-extern PFNGLMULTITEXCOORD2FARBPROC     glMultiTexCoord2f_;
-extern PFNGLMULTITEXCOORD3FARBPROC     glMultiTexCoord3f_;
-
-// GL_EXT_multi_draw_arrays
-extern PFNGLMULTIDRAWARRAYSEXTPROC   glMultiDrawArrays_;
-extern PFNGLMULTIDRAWELEMENTSEXTPROC glMultiDrawElements_;
-
-// GL_EXT_draw_range_elements
-extern PFNGLDRAWRANGEELEMENTSEXTPROC glDrawRangeElements_;
-
-// GL_EXT_stencil_two_side
-extern PFNGLACTIVESTENCILFACEEXTPROC glActiveStencilFace_;
-
-// GL_ATI_separate_stencil
-extern PFNGLSTENCILOPSEPARATEATIPROC   glStencilOpSeparate_;
-extern PFNGLSTENCILFUNCSEPARATEATIPROC glStencilFuncSeparate_;
 
 struct color
 {
@@ -212,32 +187,8 @@ extern void pingservers();
 extern void updatefrommaster(int force);
 
 // rendergl
-extern glmatrixf mvmatrix, projmatrix, clipmatrix, mvpmatrix, invmvmatrix, invmvpmatrix;
-extern void resetcamera();
-
-extern void gl_checkextensions();
-extern void gl_init(int w, int h, int bpp, int depth, int fsaa);
 extern void cleangl();
-extern void enablepolygonoffset(GLenum type);
-extern void disablepolygonoffset(GLenum type, bool restore = true);
-extern void line(int x1, int y1, float z1, int x2, int y2, float z2);
-extern void line(int x1, int y1, int x2, int y2, color *c = NULL);
-extern void box(block &b, float z1, float z2, float z3, float z4);
-extern void dot(int x, int y, float z);
-extern void linestyle(float width, int r, int g, int b);
-extern void blendbox(int x1, int y1, int x2, int y2, bool border, int tex = -1, color *c = NULL);
-extern void quad(GLuint tex, float x, float y, float s, float tx, float ty, float tsx, float tsy = 0);
-extern void quad(GLuint tex, vec &c1, vec &c2, float tx, float ty, float tsx, float tsy);
-extern void circle(GLuint tex, float x, float y, float r, float tx, float ty, float tr, int subdiv = 32);
-extern void setperspective(float fovy, float aspect, float nearplane, float farplane);
-extern void sethudgunperspective(bool on);
-extern void gl_drawframe(int w, int h, float changelod, float curfps);
-extern void clearminimap();
-extern void resetzones();
-extern void rendercursor(int x, int y, int w);
-extern void renderaboveheadicon(playerent *p);
 extern void drawscope(bool preload = false);
-extern float dynfov();
 extern void damageblend(int n);
 
 enum
