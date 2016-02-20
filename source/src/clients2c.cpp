@@ -1,11 +1,13 @@
 // client processing of the incoming network stream
 
+#include "clients2c.h"
 #include "cube.h"
 #include "bot/bot.h"
 
-VARP(networkdebug, 0, 0, 1);
+static VARP(networkdebug, 0, 0, 1);
 #define DEBUGCOND (networkdebug==1)
 
+//TODO: Lollo fix these externs by including proper #includes files
 extern bool watchingdemo;
 extern string clientpassword;
 
@@ -25,12 +27,12 @@ void neterr(const char *s)
     disconnect();
 }
 
-VARP(autogetmap, 0, 1, 1); // only if the client doesn't have that map
-VARP(autogetnewmaprevisions, 0, 1, 1);
+static VARP(autogetmap, 0, 1, 1); // only if the client doesn't have that map
+static VARP(autogetnewmaprevisions, 0, 1, 1);
 
-bool localwrongmap = false;
+static bool localwrongmap = false;
 int MA = 0, Hhits = 0; // flowtron: moved here
-bool changemapserv(char *name, int mode, int download, int revision)        // forced map change from the server
+static bool changemapserv(char *name, int mode, int download, int revision)        // forced map change from the server
 {
     MA = Hhits = 0; // reset for checkarea()
     gamemode = mode;
@@ -81,7 +83,7 @@ bool changemapserv(char *name, int mode, int download, int revision)        // f
 // don't care if he's in the scenery or other players,
 // just don't overlap with our client
 
-void updatepos(playerent *d)
+static void updatepos(playerent *d)
 {
     const float r = player1->radius+d->radius;
     const float dx = player1->o.x-d->o.x;
@@ -96,7 +98,7 @@ void updatepos(playerent *d)
     }
 }
 
-void updatelagtime(playerent *d)
+static void updatelagtime(playerent *d)
 {
     int lagtime = totalmillis-d->lastupdate;
     if(lagtime)
@@ -106,11 +108,10 @@ void updatelagtime(playerent *d)
     }
 }
 
-extern void trydisconnect();
 
 VARP(maxrollremote, 0, 0, 20); // bound remote "roll" values by our maxroll?!
 
-void parsepositions(ucharbuf &p)
+static void parsepositions(ucharbuf &p)
 {
     int type;
     while(p.remaining()) switch(type = getint(p))
@@ -241,15 +242,13 @@ void parsepositions(ucharbuf &p)
     }
 }
 
+// TODO: Lollo fix this extern by importing proper #include
 extern int checkarea(int maplayout_factor, char *maplayout);
 char *mlayout = NULL;
 int Mv = 0, Ma = 0, F2F = 1000 * MINFF; // moved up:, MA = 0;
 float Mh = 0;
-extern int connected;
-extern int lastpm;
-extern bool noflags;
 bool item_fail = false;
-int map_quality = MAP_IS_EDITABLE;
+static int map_quality = MAP_IS_EDITABLE;
 
 /// TODO: many functions and variables are redundant between client and server... someone should redo the entire server code and unify client and server.
 bool good_map() // call this function only at startmap
@@ -312,11 +311,11 @@ bool good_map() // call this function only at startmap
     return map_quality > 0;
 }
 
-VARP(hudextras, 0, 0, 3);
+static VARP(hudextras, 0, 0, 3);
 
-int teamworkid = -1;
+static int teamworkid = -1;
 
-void showhudextras(char hudextras, char value){
+static void showhudextras(char hudextras, char value){
     void (*outf)(const char *s, ...) = (hudextras > 1 ? hudoutf : conoutf);
     bool caps = hudextras < 3 ? false : true;
     switch(value)
@@ -364,7 +363,7 @@ void showhudextras(char hudextras, char value){
 
 int lastspawn = 0;
 
-void onCallVote(int type, int vcn, char *text, char *a)
+static void onCallVote(int type, int vcn, char *text, char *a)
 {
     if(identexists("onCallVote"))
     {
@@ -373,7 +372,7 @@ void onCallVote(int type, int vcn, char *text, char *a)
     }
 }
 
-void onChangeVote(int mod, int id)
+static void onChangeVote(int mod, int id)
 {
     if(identexists("onChangeVote"))
     {
@@ -385,7 +384,7 @@ void onChangeVote(int mod, int id)
 VARP(voicecomsounds, 0, 1, 2);
 bool medals_arrived=0;
 medalsst a_medals[END_MDS];
-void parsemessages(int cn, playerent *d, ucharbuf &p, bool demo = false)
+static void parsemessages(int cn, playerent *d, ucharbuf &p, bool demo = false)
 {
     static char text[MAXTRANS];
     int type, joining = 0;
@@ -1408,7 +1407,7 @@ void parsemessages(int cn, playerent *d, ucharbuf &p, bool demo = false)
     #endif
 }
 
-void setDemoFilenameFormat(char *fmt)
+static void setDemoFilenameFormat(char *fmt)
 {
     extern string demofilenameformat;
     if(fmt && fmt[0]!='\0')
@@ -1417,7 +1416,7 @@ void setDemoFilenameFormat(char *fmt)
     } else copystring(demofilenameformat, DEFDEMOFILEFMT); // reset to default if passed empty string - or should we output the current value in this case?
 }
 COMMANDN(demonameformat, setDemoFilenameFormat, "s");
-void setDemoTimestampFormat(char *fmt)
+static void setDemoTimestampFormat(char *fmt)
 {
     extern string demotimestampformat;
     if(fmt && fmt[0]!='\0')
@@ -1426,18 +1425,18 @@ void setDemoTimestampFormat(char *fmt)
     } else copystring(demotimestampformat, DEFDEMOTIMEFMT); // reset to default if passed empty string - or should we output the current value in this case?
 }
 COMMANDN(demotimeformat, setDemoTimestampFormat, "s");
-void setDemoTimeLocal(int *truth)
+static void setDemoTimeLocal(int *truth)
 {
     extern int demotimelocal;
     demotimelocal = *truth == 0 ? 0 : 1;
 }
 COMMANDN(demotimelocal, setDemoTimeLocal, "i");
-void getdemonameformat() { extern string demofilenameformat; result(demofilenameformat); } COMMAND(getdemonameformat, "");
-void getdemotimeformat() { extern string demotimestampformat; result(demotimestampformat); } COMMAND(getdemotimeformat, "");
-void getdemotimelocal() { extern int demotimelocal; intret(demotimelocal); } COMMAND(getdemotimelocal, "");
+static void getdemonameformat() { extern string demofilenameformat; result(demofilenameformat); } COMMAND(getdemonameformat, "");
+static void getdemotimeformat() { extern string demotimestampformat; result(demotimestampformat); } COMMAND(getdemotimeformat, "");
+static void getdemotimelocal() { extern int demotimelocal; intret(demotimelocal); } COMMAND(getdemotimelocal, "");
 
 
-const char *parseDemoFilename(char *srvfinfo)
+static const char *parseDemoFilename(char *srvfinfo)
 {
     int gmode = 0; //-314;
     int mplay = 0;
@@ -1469,7 +1468,7 @@ const char *parseDemoFilename(char *srvfinfo)
     return getDemoFilename(gmode, mplay, mdrop, stamp, srvmap);
 }
 
-void receivefile(uchar *data, int len)
+static void receivefile(uchar *data, int len)
 {
     static char text[MAXTRANS];
     ucharbuf p(data, len);

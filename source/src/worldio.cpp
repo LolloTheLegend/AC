@@ -530,7 +530,6 @@ COMMAND(showmapdims, "");
 int numspawn[3], maploaded = 0, numflagspawn[2];
 VAR(curmaprevision, 1, 0, 0);
 
-extern char *mlayout;
 extern int Mv, Ma, Hhits;
 extern float Mh;
 

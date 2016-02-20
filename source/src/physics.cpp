@@ -315,7 +315,6 @@ void resizephysent(physent *pl, int moveres, int curtime, float min, float max)
 
 void clamproll(physent *pl)
 {
-    extern int maxrollremote;
     int mroll = pl == player1 ? maxroll : maxrollremote;
     if(pl->roll > mroll) pl->roll = mroll;
     else if(pl->roll < -mroll) pl->roll = -mroll;

@@ -239,17 +239,6 @@ extern serverinfo *getconnectedserverinfo();
 extern void pingservers();
 extern void updatefrommaster(int force);
 
-struct packetqueue
-{
-    ringbuf<ENetPacket *, 8> packets;
-
-    packetqueue();
-    ~packetqueue();
-    void queue(ENetPacket *p);
-    bool flushtolog(const char *logfile);
-    void clear();
-};
-
 // rendergl
 extern glmatrixf mvmatrix, projmatrix, clipmatrix, mvpmatrix, invmvmatrix, invmvpmatrix;
 extern void resetcamera();
@@ -694,8 +683,6 @@ extern int curscontext();
 extern int screenshottype;
 
 // server
-extern void servertoclient(int chan, uchar *buf, int len, bool demo = false);
-extern void localservertoclient(int chan, uchar *buf, int len, bool demo = false);
 extern const char *modestr(int n, bool acronyms = false);
 extern const char *voteerrorstr(int n);
 extern const char *mmfullname(int n);

@@ -681,8 +681,6 @@ const char *medal_str[] =
 {
     "Best Fragger", "Dude that dies a lot"
 }; //just some medals string tests, nothing serious
-extern bool medals_arrived;
-extern medalsst a_medals[END_MDS];
 void drawscores()
 {
     static float time=0;

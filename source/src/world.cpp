@@ -498,7 +498,6 @@ bool empty_world(int factor, bool force)    // main empty world creation routine
     if(clearmap && unsavededits) { xmapbackup("newmap", ""); unsavededits = 0; }
     if(copy) ow = blockcopy(shrink ? bs : be);
 
-    extern char *mlayout;
     DELETEA(world);
     DELETEA(mlayout);
 
