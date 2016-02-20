@@ -691,6 +691,33 @@ source/src/i18n.cpp.s:
 	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/i18n.cpp.s
 .PHONY : source/src/i18n.cpp.s
 
+source/src/jpegenc.o: source/src/jpegenc.cpp.o
+
+.PHONY : source/src/jpegenc.o
+
+# target to build an object file
+source/src/jpegenc.cpp.o:
+	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/jpegenc.cpp.o
+.PHONY : source/src/jpegenc.cpp.o
+
+source/src/jpegenc.i: source/src/jpegenc.cpp.i
+
+.PHONY : source/src/jpegenc.i
+
+# target to preprocess a source file
+source/src/jpegenc.cpp.i:
+	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/jpegenc.cpp.i
+.PHONY : source/src/jpegenc.cpp.i
+
+source/src/jpegenc.s: source/src/jpegenc.cpp.s
+
+.PHONY : source/src/jpegenc.s
+
+# target to generate assembly for a file
+source/src/jpegenc.cpp.s:
+	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/jpegenc.cpp.s
+.PHONY : source/src/jpegenc.cpp.s
+
 source/src/log.o: source/src/log.cpp.o
 
 .PHONY : source/src/log.o
@@ -1727,6 +1754,9 @@ help:
 	@echo "... source/src/i18n.o"
 	@echo "... source/src/i18n.i"
 	@echo "... source/src/i18n.s"
+	@echo "... source/src/jpegenc.o"
+	@echo "... source/src/jpegenc.i"
+	@echo "... source/src/jpegenc.s"
 	@echo "... source/src/log.o"
 	@echo "... source/src/log.i"
 	@echo "... source/src/log.s"
