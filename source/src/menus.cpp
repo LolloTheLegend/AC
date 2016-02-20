@@ -2,15 +2,15 @@
 
 #include "cube.h"
 
-hashtable<const char *, gmenu> menus;
-gmenu *curmenu = NULL, *lastmenu = NULL;
-color *menuselbgcolor = NULL;
+static hashtable<const char *, gmenu> menus;
+static gmenu *curmenu = NULL, *lastmenu = NULL;
+static color *menuselbgcolor = NULL;
 
-vector<gmenu *> menustack;
+static vector<gmenu *> menustack;
 
-VARP(browsefiledesc, 0, 1, 1);
+static VARP(browsefiledesc, 0, 1, 1);
 
-char *getfiledesc(const char *dir, const char *name, const char *ext)
+static char *getfiledesc(const char *dir, const char *name, const char *ext)
 {
     if(!browsefiledesc || !dir || !name || !ext) return NULL;
     defformatstring(fn)("%s/%s.%s", dir, name, ext);
@@ -117,7 +117,7 @@ void closemenu(const char *name)
     }
 }
 
-void showmenu_(const char *name)
+static void showmenu_(const char *name)
 {
     showmenu(name, true);
 }
@@ -145,7 +145,7 @@ void menuselect(void *menu, int sel)
     }
 }
 
-void drawarrow(int dir, int x, int y, int size, float r = 1.0f, float g = 1.0f, float b = 1.0f)
+static void drawarrow(int dir, int x, int y, int size, float r = 1.0f, float g = 1.0f, float b = 1.0f)
 {
     glDisable(GL_BLEND);
     glDisable(GL_TEXTURE_2D);
@@ -178,6 +178,7 @@ void rendermenu()
     m.render();
 }
 
+// TODO: Lollo, why are these implementation even here... WTF
 void mitem::render(int x, int y, int w)
 {
     if(isselection()) renderbg(x, y, w, menuselbgcolor);
@@ -195,6 +196,7 @@ bool mitem::isselection() { return parent->allowinput && !parent->hotkeys && par
 color mitem::gray(0.2f, 0.2f, 0.2f);
 color mitem::white(1.0f, 1.0f, 1.0f);
 color mitem::whitepulse(1.0f, 1.0f, 1.0f);
+// TODO: Lollo fix from above to here
 
 // text item
 
@@ -274,7 +276,7 @@ struct mitemtextvar : mitemmanual
     }
 };
 
-VARP(hidebigmenuimages, 0, 0, 1);
+static VARP(hidebigmenuimages, 0, 0, 1);
 
 struct mitemimagemanual : mitemmanual
 {
@@ -362,7 +364,7 @@ struct mitemimage : mitemimagemanual
         DELETEA(desc);
     }
 };
-VARP(maploaditemlength, 0, 46, 255);
+static VARP(maploaditemlength, 0, 46, 255);
 struct mitemmaploadmanual : mitemmanual
 {
     const char *filename;
@@ -584,7 +586,7 @@ struct mitemtextinput : mitemtext
 };
 
 // slider item
-VARP(wrapslider, 0, 0, 1);
+static VARP(wrapslider, 0, 0, 1);
 
 struct mitemslider : mitem
 {
@@ -829,7 +831,7 @@ void *addmenu(const char *name, const char *title, bool allowinput, void (__cdec
     return &menu;
 }
 
-void newmenu(char *name, int *hotkeys, int *forwardkeys)
+static void newmenu(char *name, int *hotkeys, int *forwardkeys)
 {
     addmenu(name, NULL, true, NULL, NULL, *hotkeys > 0, *forwardkeys > 0);
 }
@@ -840,7 +842,7 @@ void menureset(void *menu)
     m.items.deletecontents();
 }
 
-void delmenu(const char *name)
+static void delmenu(const char *name)
 {
     if (!name) return;
     gmenu *m = menus.access(name);
@@ -874,7 +876,7 @@ void menuheader(void *menu, char *header, char *footer)
     m.header = header && header[0] ? header : NULL;
     m.footer = footer && footer[0] ? footer : NULL;
 }
-void lastmenu_header(char *header, char *footer)
+static void lastmenu_header(char *header, char *footer)
 {
     if(lastmenu)
     {
@@ -884,7 +886,7 @@ void lastmenu_header(char *header, char *footer)
 }
 COMMANDN(menuheader, lastmenu_header, "ss");
 
-void menufont(void *menu, const char *usefont)
+static void menufont(void *menu, const char *usefont)
 {
     gmenu &m = *(gmenu *)menu;
     if(usefont==NULL)
@@ -894,53 +896,53 @@ void menufont(void *menu, const char *usefont)
     } else m.usefont = newstring(usefont);
 }
 
-void setmenufont(char *usefont)
+static void setmenufont(char *usefont)
 {
     if(!lastmenu) return;
     menufont(lastmenu, usefont);
 }
 
-void setmenublink(int *truth)
+static void setmenublink(int *truth)
 {
     if(!lastmenu) return;
     gmenu &m = *(gmenu *)lastmenu;
     m.allowblink = *truth != 0;
 }
 
-void menuinit(char *initaction)
+static void menuinit(char *initaction)
 {
     if(!lastmenu) return;
     lastmenu->initaction = newstring(initaction);
 }
 
-void menuinitselection(int *line)
+static void menuinitselection(int *line)
 {
     if(!lastmenu) return;
     if(lastmenu->items.inrange(*line)) lastmenu->menusel = *line;
 }
 
-void menuselection(char *menu, int *line)
+static void menuselection(char *menu, int *line)
 {
     if(!menu || !menus.access(menu)) return;
     gmenu &m = menus[menu];
     menuselect(&m, *line);
 }
 
-void menuitem(char *text, char *action, char *hoveraction)
+static void menuitem(char *text, char *action, char *hoveraction)
 {
     if(!lastmenu) return;
     char *t = newstring(text);
     lastmenu->items.add(new mitemtext(lastmenu, t, newstring(action[0] ? action : text), hoveraction[0] ? newstring(hoveraction) : NULL, NULL));
 }
 
-void menuitemvar(char *eval, char *action, char *hoveraction)
+static void menuitemvar(char *eval, char *action, char *hoveraction)
 {
     if(!lastmenu) return;
     char *t = newstring(eval);
     lastmenu->items.add(new mitemtextvar(lastmenu, t, action[0] ? newstring(action) : NULL, hoveraction[0] ? newstring(hoveraction) : NULL));
 }
 
-void menuitemimage(char *name, char *text, char *action, char *hoveraction)
+static void menuitemimage(char *name, char *text, char *action, char *hoveraction)
 {
     if(!lastmenu) return;
     if(fileexists(name, "r") || findfile(name, "r") != name)
@@ -949,7 +951,7 @@ void menuitemimage(char *name, char *text, char *action, char *hoveraction)
         lastmenu->items.add(new mitemtext(lastmenu, newstring(text), newstring(action[0] ? action : text), hoveraction[0] ? newstring(hoveraction) : NULL, NULL));
 }
 
-void menuitemmapload(char *name, char *text)
+static void menuitemmapload(char *name, char *text)
 {
     if(!lastmenu) return;
     string caction;
@@ -958,31 +960,31 @@ void menuitemmapload(char *name, char *text)
     lastmenu->items.add(new mitemmapload(lastmenu, newstring(name), newstring(name), newstring(caction), NULL, NULL, NULL));
 }
 
-void menuitemtextinput(char *text, char *value, char *action, char *hoveraction, int *maxchars, int *maskinput)
+static void menuitemtextinput(char *text, char *value, char *action, char *hoveraction, int *maxchars, int *maskinput)
 {
     if(!lastmenu || !text || !value) return;
     lastmenu->items.add(new mitemtextinput(lastmenu, newstring(text), newstring(value), action[0] ? newstring(action) : NULL, hoveraction[0] ? newstring(hoveraction) : NULL, NULL, *maxchars, *maskinput));
 }
 
-void menuitemslider(char *text, int *min_, int *max_, char *value, int *step, char *display, char *action)
+static void menuitemslider(char *text, int *min_, int *max_, char *value, int *step, char *display, char *action)
 {
     if(!lastmenu) return;
     lastmenu->items.add(new mitemslider(lastmenu, newstring(text), *min_, *max_, *step, newstring(value), display[0] ? newstring(display) : NULL, action[0] ? newstring(action) : NULL, NULL));
 }
 
-void menuitemkeyinput(char *text, char *bindcmd)
+static void menuitemkeyinput(char *text, char *bindcmd)
 {
     if(!lastmenu) return;
     lastmenu->items.add(new mitemkeyinput(lastmenu, newstring(text), newstring(bindcmd), NULL));
 }
 
-void menuitemcheckbox(char *text, char *value, char *action)
+static void menuitemcheckbox(char *text, char *value, char *action)
 {
     if(!lastmenu) return;
     lastmenu->items.add(new mitemcheckbox(lastmenu, newstring(text), newstring(value), action[0] ? newstring(action) : NULL, NULL));
 }
 
-void menumdl(char *mdl, char *anim, int *rotspeed, int *scale)
+static void menumdl(char *mdl, char *anim, int *rotspeed, int *scale)
 {
     if(!lastmenu || !mdl || !anim) return;
     gmenu &menu = *lastmenu;
@@ -992,7 +994,7 @@ void menumdl(char *mdl, char *anim, int *rotspeed, int *scale)
     menu.scale = clamp(*scale, 0, 100);
 }
 
-void menudirlist(char *dir, char *ext, char *action, int *image)
+static void menudirlist(char *dir, char *ext, char *action, int *image)
 {
     if(!lastmenu) return;
     if(!action || !action[0]) return;
@@ -1005,7 +1007,7 @@ void menudirlist(char *dir, char *ext, char *action, int *image)
     d->image = *image!=0;
 }
 
-void chmenumdl(char *menu, char *mdl, char *anim, int *rotspeed, int *scale)
+static void chmenumdl(char *menu, char *mdl, char *anim, int *rotspeed, int *scale)
 {
     if(!menu || !menus.access(menu)) return;
     gmenu &m = menus[menu];
@@ -1017,7 +1019,7 @@ void chmenumdl(char *menu, char *mdl, char *anim, int *rotspeed, int *scale)
     m.scale = clamp(*scale, 0, 100);
 }
 
-bool parsecolor(color *col, const char *r, const char *g, const char *b, const char *a)
+static bool parsecolor(color *col, const char *r, const char *g, const char *b, const char *a)
 {
     if(!r[0] || !col) return false;    // four possible parameter schemes:
     if(!g[0]) g = b = r;               // grey
@@ -1029,7 +1031,7 @@ bool parsecolor(color *col, const char *r, const char *g, const char *b, const c
     return true;
 }
 
-void menuselectionbgcolor(char *r, char *g, char *b, char *a)
+static void menuselectionbgcolor(char *r, char *g, char *b, char *a)
 {
     if(!menuselbgcolor) menuselbgcolor = new color;
     if(!r[0]) { DELETEA(menuselbgcolor); return; }
@@ -1421,7 +1423,7 @@ void gmenu::renderbg(int x1, int y1, int x2, int y2, bool border)
 
 void *applymenu = NULL;
 static vector<const char *> needsapply;
-VARP(applydialog, 0, 1, 1);
+static VARP(applydialog, 0, 1, 1);
 
 void addchange(const char *desc, int type)
 {
@@ -1457,6 +1459,7 @@ void refreshapplymenu(void *menu, bool init)
 }
 
 void setscorefont();
+// TODO: Lollo fix this crap
 VARFP(scorefont, 0, 0, 1, setscorefont());
 void setscorefont()
 {

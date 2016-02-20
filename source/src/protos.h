@@ -84,31 +84,8 @@ struct authkey // for AUTH
     }
 };
 
-// console
-extern stream *clientlogfile;
-extern vector<char> *bootclientlog;
-extern int clientloglinesremaining;
 
-
-// menus
-extern void rendermenu();
-extern bool menuvisible();
-extern void menureset(void *menu);
-extern void menumanual(void *menu, char *text, char *action = NULL, color *bgcolor = NULL, const char *desc = NULL);
-extern void menuimagemanual(void *menu, const char *filename1, const char *filename2, char *text, char *action = NULL, color *bgcolor = NULL, const char *desc = NULL);
-extern void menutitle(void *menu, const char *title = NULL);
 extern bool needscoresreorder;
-extern void menuheader(void *menu, char *header = NULL, char *footer = NULL);
-extern bool menukey(int code, bool isdown, int unicode, SDLMod mod = KMOD_NONE);
-extern void *addmenu(const char *name, const char *title = NULL, bool allowinput = true, void (__cdecl *refreshfunc)(void *, bool) = NULL, bool (__cdecl *keyfunc)(void *, int, bool, int) = NULL, bool hotkeys = false, bool forwardkeys = false);
-extern void rendermenumdl();
-extern void menuset(void *m, bool save = true);
-extern void menuselect(void *menu, int sel);
-extern void showmenu(const char *name, bool top = true);
-extern void closemenu(const char *name);
-extern void addchange(const char *desc, int type);
-extern void clearchanges(int type);
-extern void refreshapplymenu(void *menu, bool init);
 
 struct mitem
 {

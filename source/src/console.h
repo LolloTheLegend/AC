@@ -291,6 +291,9 @@ bool bindkey(keym *km, const char *action, int state = keym::ACTION_DEFAULT);
 bool bindc(int code, const char *action, int type = keym::ACTION_DEFAULT);
 
 
+extern stream *clientlogfile;
+extern vector<char> *bootclientlog;
+extern int clientloglinesremaining;
 extern textinputbuffer cmdline;
 extern keym* keypressed;
 
