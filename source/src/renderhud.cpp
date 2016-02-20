@@ -1,20 +1,21 @@
 // renderhud.cpp: HUD rendering
 
+#include "renderhud.h"
 #include "cube.h"
 
-void drawicon(Texture *tex, float x, float y, float s, int col, int row, float ts)
+static void drawicon(Texture *tex, float x, float y, float s, int col, int row, float ts)
 {
     if(tex && tex->xs == tex->ys) quad(tex->id, x, y, s, ts*col, ts*row, ts);
 }
 
-inline void turn_on_transparency(int alpha = 255)
+static inline void turn_on_transparency(int alpha = 255)
 {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glColor4ub(255, 255, 255, alpha);
 }
 
-void drawequipicon(float x, float y, int col, int row, float blend)
+static void drawequipicon(float x, float y, int col, int row, float blend)
 {
     static Texture *tex = NULL;
     if(!tex) tex = textureload("packages/misc/items.png", 4);
@@ -26,9 +27,9 @@ void drawequipicon(float x, float y, int col, int row, float blend)
     }
 }
 
-VARP(radarentsize, 4, 12, 64);
+static VARP(radarentsize, 4, 12, 64);
 
-void drawradaricon(float x, float y, float s, int col, int row)
+static void drawradaricon(float x, float y, float s, int col, int row)
 {
     static Texture *tex = NULL;
     if(!tex) tex = textureload("packages/misc/radaricons.png", 3);
@@ -40,7 +41,7 @@ void drawradaricon(float x, float y, float s, int col, int row)
     }
 }
 
-void drawctficon(float x, float y, float s, int col, int row, float ts, int alpha)
+static void drawctficon(float x, float y, float s, int col, int row, float ts, int alpha)
 {
     static Texture *ctftex = NULL, *htftex = NULL, *ktftex = NULL;
     if(!ctftex) ctftex = textureload("packages/misc/ctficons.png", 3);
@@ -61,8 +62,8 @@ void drawctficon(float x, float y, float s, int col, int row, float ts, int alph
     }
 }
 
-VARP(votealpha, 0, 255, 255);
-void drawvoteicon(float x, float y, int col, int row, bool noblend)
+static VARP(votealpha, 0, 255, 255);
+static void drawvoteicon(float x, float y, int col, int row, bool noblend)
 {
     static Texture *tex = NULL;
     if(!tex) tex = textureload("packages/misc/voteicons.png", 3);
@@ -75,20 +76,20 @@ void drawvoteicon(float x, float y, int col, int row, bool noblend)
     }
 }
 
-VARP(crosshairsize, 0, 15, 50);
-VARP(showstats, 0, 1, 2);
-VARP(crosshairfx, 0, 1, 1);
-VARP(crosshairteamsign, 0, 1, 1);
-VARP(hideradar, 0, 0, 1);
-VARP(hidecompass, 0, 0, 1);
-VARP(hideteam, 0, 0, 1);
-VARP(hidectfhud, 0, 0, 1);
-VARP(hidevote, 0, 0, 2);
-VARP(hidehudmsgs, 0, 0, 1);
-VARP(hidehudequipment, 0, 0, 1);
-VARP(hideconsole, 0, 0, 1);
-VARP(hidespecthud, 0, 0, 1);
-VAR(showmap, 0, 0, 1);
+static VARP(crosshairsize, 0, 15, 50);
+static VARP(showstats, 0, 1, 2);
+static VARP(crosshairfx, 0, 1, 1);
+static VARP(crosshairteamsign, 0, 1, 1);
+static VARP(hideradar, 0, 0, 1);
+static VARP(hidecompass, 0, 0, 1);
+static VARP(hideteam, 0, 0, 1);
+static VARP(hidectfhud, 0, 0, 1);
+static VARP(hidevote, 0, 0, 2);
+static VARP(hidehudmsgs, 0, 0, 1);
+static VARP(hidehudequipment, 0, 0, 1);
+static VARP(hideconsole, 0, 0, 1);
+static VARP(hidespecthud, 0, 0, 1);
+static VAR(showmap, 0, 0, 1);
 
 void drawscope(bool preload)
 {
@@ -160,7 +161,7 @@ void drawscope(bool preload)
 const char *crosshairnames[CROSSHAIR_NUM] = { "default", "teammate", "scope", "knife", "pistol", "carbine", "shotgun", "smg", "sniper", "ar", "cpistol", "grenades", "akimbo" };
 Texture *crosshairs[CROSSHAIR_NUM] = { NULL }; // weapon specific crosshairs
 
-Texture *loadcrosshairtexture(const char *c)
+static Texture *loadcrosshairtexture(const char *c)
 {
     defformatstring(p)("packages/crosshairs/%s", c);
     Texture *crosshair = textureload(p, 3);
@@ -168,7 +169,7 @@ Texture *loadcrosshairtexture(const char *c)
     return crosshair;
 }
 
-void loadcrosshair(char *c, char *name)
+static void loadcrosshair(char *c, char *name)
 {
     if (strcmp(name, "") == 0 || strcmp(name, "all") == 0)
     {
@@ -227,12 +228,12 @@ void drawcrosshair(playerent *p, int n, color *c, float size)
     glEnd();
 }
 
-VARP(hidedamageindicator, 0, 0, 1);
-VARP(damageindicatorsize, 0, 200, 10000);
-VARP(damageindicatordist, 0, 500, 10000);
-VARP(damageindicatortime, 1, 1000, 10000);
-VARP(damageindicatoralpha, 1, 50, 100);
-int damagedirections[4] = {0};
+static VARP(hidedamageindicator, 0, 0, 1);
+static VARP(damageindicatorsize, 0, 200, 10000);
+static VARP(damageindicatordist, 0, 500, 10000);
+static VARP(damageindicatortime, 1, 1000, 10000);
+static VARP(damageindicatoralpha, 1, 50, 100);
+static int damagedirections[4] = {0};
 
 void updatedmgindicator(vec &attack)
 {
@@ -256,7 +257,7 @@ void updatedmgindicator(vec &attack)
     damagedirections[bestdir] = lastmillis+damageindicatortime;
 }
 
-void drawdmgindicator()
+static void drawdmgindicator()
 {
     if(!damageindicatorsize) return;
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -283,7 +284,7 @@ void drawdmgindicator()
     glEnable(GL_TEXTURE_2D);
 }
 
-void drawequipicons(playerent *p)
+static void drawequipicons(playerent *p)
 {
     glDisable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -304,7 +305,7 @@ void drawequipicons(playerent *p)
     glEnable(GL_BLEND);
 }
 
-void drawradarent(float x, float y, float yaw, int col, int row, float iconsize, bool pulse, const char *label = NULL, ...)
+static void drawradarent(float x, float y, float yaw, int col, int row, float iconsize, bool pulse, const char *label = NULL, ...)
 {
     glPushMatrix();
     if(pulse) glColor4f(1.0f, 1.0f, 1.0f, 0.2f+(sin(lastmillis/30.0f)+1.0f)/2.0f);
@@ -375,7 +376,7 @@ struct hudmessages : consolebuffer<hudline>
     }
 };
 
-hudmessages hudmsgs;
+static hudmessages hudmsgs;
 
 void hudoutf(const char *s, ...)
 {
@@ -396,13 +397,13 @@ void hudeditf(int type, const char *s, ...)
     hudmsgs.editline(type, sf);
 }
 
-bool insideradar(const vec &centerpos, float radius, const vec &o)
+static bool insideradar(const vec &centerpos, float radius, const vec &o)
 {
     if(showmap) return !o.reject(centerpos, radius);
     return o.distxy(centerpos)<=radius;
 }
 
-bool isattacking(playerent *p) { return lastmillis-p->lastaction < 500; }
+static bool isattacking(playerent *p) { return lastmillis-p->lastaction < 500; }
 
 vec getradarpos()
 {
@@ -411,12 +412,12 @@ vec getradarpos()
     return vec(VIRTW-10-VIRTH/28-overlaysize, 10+VIRTH/52, 0);
 }
 
-VARP(showmapbackdrop, 0, 0, 2);
-VARP(showmapbackdroptransparency, 0, 75, 100);
-VARP(radarheight, 5, 150, 500);
-VAR(showradarvalues, 0, 0, 1); // DEBUG
+static VARP(showmapbackdrop, 0, 0, 2);
+static VARP(showmapbackdroptransparency, 0, 75, 100);
+static VARP(radarheight, 5, 150, 500);
+static VAR(showradarvalues, 0, 0, 1); // DEBUG
 
-void drawradar_showmap(playerent *p, int w, int h)
+static void drawradar_showmap(playerent *p, int w, int h)
 {
     float minimapviewsize = 3*min(VIRTW,VIRTH)/4; //minimap default size
     float halfviewsize = minimapviewsize/2.0f;
@@ -512,7 +513,7 @@ void drawradar_showmap(playerent *p, int w, int h)
     glPopMatrix();
 }
 
-void drawradar_vicinity(playerent *p, int w, int h)
+static void drawradar_vicinity(playerent *p, int w, int h)
 {
     extern GLuint minimaptex;
     int gdim = max(mapdims.xspan, mapdims.yspan);
@@ -638,13 +639,13 @@ void drawradar_vicinity(playerent *p, int w, int h)
 
 }
 
-void drawradar(playerent *p, int w, int h)
+static void drawradar(playerent *p, int w, int h)
 {
     if(showmap) drawradar_showmap(p,w,h);
     else drawradar_vicinity(p,w,h);
 }
 
-void drawteamicons(int w, int h, bool spect)
+static void drawteamicons(int w, int h, bool spect)
 {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glColor3f(1, 1, 1);
@@ -653,12 +654,13 @@ void drawteamicons(int w, int h, bool spect)
     quad(icons->id, VIRTW-VIRTH/12-10, 10, VIRTH/12, team_base(spect ? players[player1->followplayercn]->team : player1->team) ? 0.5f : 0, 0, 0.49f, 1.0f);
 }
 
-int damageblendmillis = 0;
+static int damageblendmillis = 0;
 
+// TODO: Lollo fix this crap
 VARFP(damagescreen, 0, 1, 1, { if(!damagescreen) damageblendmillis = 0; });
-VARP(damagescreenfactor, 1, 7, 100);
-VARP(damagescreenalpha, 1, 45, 100);
-VARP(damagescreenfade, 0, 125, 1000);
+static VARP(damagescreenfactor, 1, 7, 100);
+static VARP(damagescreenalpha, 1, 45, 100);
+static VARP(damagescreenfade, 0, 125, 1000);
 
 void damageblend(int n)
 {
@@ -667,7 +669,7 @@ void damageblend(int n)
     damageblendmillis += n*damagescreenfactor;
 }
 
-void drawmedals(float x, float y, int col, int row, Texture *tex)
+static void drawmedals(float x, float y, int col, int row, Texture *tex)
 {
     if(tex)
     {
@@ -677,11 +679,11 @@ void drawmedals(float x, float y, int col, int row, Texture *tex)
         glPopAttrib();
     }
 }
-const char *medal_str[] =
+static const char *medal_str[] =
 {
     "Best Fragger", "Dude that dies a lot"
 }; //just some medals string tests, nothing serious
-void drawscores()
+static void drawscores()
 {
     static float time=0;
     if(!medals_arrived) {time=0; return;} else if(time > 5){time=0; medals_arrived=0;}
@@ -710,15 +712,15 @@ void drawscores()
     glPopAttrib();
 }
 
-string enginestateinfo = "";
-void CSgetEngineState() { result(enginestateinfo); }
+static string enginestateinfo = "";
+static void CSgetEngineState() { result(enginestateinfo); }
 COMMANDN(getEngineState, CSgetEngineState, "");
 
 VARP(clockdisplay,0,1,1);
 VARP(clockcount,0,0,1);
-VARP(dbgpos,0,0,1);
-VARP(showtargetname,0,1,1);
-VARP(showspeed, 0, 0, 1);
+static VARP(dbgpos,0,0,1);
+static VARP(showtargetname,0,1,1);
+static VARP(showspeed, 0, 0, 1);
 string gtime;
 
 void gl_drawhud(int w, int h, int curfps, int nquads, int curvert, bool underwater)

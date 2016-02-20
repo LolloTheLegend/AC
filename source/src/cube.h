@@ -42,6 +42,7 @@
 #include "texture.h"
 #include "rendercubes.h"
 #include "rendergl.h"
+#include "renderhud.h"
 #include "protos.h"                     // external function decls
 
 #endif
