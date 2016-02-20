@@ -841,7 +841,6 @@ void checkinput()
                 {
                     if (event.key.state==SDL_PRESSED)
                     {
-                        extern int tsens(int x);
                         tsens(event.key.keysym.sym);
                     }
                 }

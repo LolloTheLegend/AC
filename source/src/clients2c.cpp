@@ -231,7 +231,6 @@ static void parsepositions(ucharbuf &p)
             if(d->state==CS_LAGGED || d->state==CS_SPAWNING) d->state = CS_ALIVE;
             // when playing a demo spectate first player we know about
             if(player1->isspectating() && player1->spectatemode==SM_NONE) togglespect();
-            extern void clamproll(physent *pl);
             clamproll((physent *) d);
             break;
         }

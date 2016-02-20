@@ -829,87 +829,6 @@ source/src/menus.cpp.s:
 	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/menus.cpp.s
 .PHONY : source/src/menus.cpp.s
 
-source/src/oggstream.o: source/src/oggstream.cpp.o
-
-.PHONY : source/src/oggstream.o
-
-# target to build an object file
-source/src/oggstream.cpp.o:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/oggstream.cpp.o
-.PHONY : source/src/oggstream.cpp.o
-
-source/src/oggstream.i: source/src/oggstream.cpp.i
-
-.PHONY : source/src/oggstream.i
-
-# target to preprocess a source file
-source/src/oggstream.cpp.i:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/oggstream.cpp.i
-.PHONY : source/src/oggstream.cpp.i
-
-source/src/oggstream.s: source/src/oggstream.cpp.s
-
-.PHONY : source/src/oggstream.s
-
-# target to generate assembly for a file
-source/src/oggstream.cpp.s:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/oggstream.cpp.s
-.PHONY : source/src/oggstream.cpp.s
-
-source/src/openal.o: source/src/openal.cpp.o
-
-.PHONY : source/src/openal.o
-
-# target to build an object file
-source/src/openal.cpp.o:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/openal.cpp.o
-.PHONY : source/src/openal.cpp.o
-
-source/src/openal.i: source/src/openal.cpp.i
-
-.PHONY : source/src/openal.i
-
-# target to preprocess a source file
-source/src/openal.cpp.i:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/openal.cpp.i
-.PHONY : source/src/openal.cpp.i
-
-source/src/openal.s: source/src/openal.cpp.s
-
-.PHONY : source/src/openal.s
-
-# target to generate assembly for a file
-source/src/openal.cpp.s:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/openal.cpp.s
-.PHONY : source/src/openal.cpp.s
-
-source/src/packetqueue.o: source/src/packetqueue.cpp.o
-
-.PHONY : source/src/packetqueue.o
-
-# target to build an object file
-source/src/packetqueue.cpp.o:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/packetqueue.cpp.o
-.PHONY : source/src/packetqueue.cpp.o
-
-source/src/packetqueue.i: source/src/packetqueue.cpp.i
-
-.PHONY : source/src/packetqueue.i
-
-# target to preprocess a source file
-source/src/packetqueue.cpp.i:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/packetqueue.cpp.i
-.PHONY : source/src/packetqueue.cpp.i
-
-source/src/packetqueue.s: source/src/packetqueue.cpp.s
-
-.PHONY : source/src/packetqueue.s
-
-# target to generate assembly for a file
-source/src/packetqueue.cpp.s:
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/packetqueue.cpp.s
-.PHONY : source/src/packetqueue.cpp.s
-
 source/src/physics.o: source/src/physics.cpp.o
 
 .PHONY : source/src/physics.o
@@ -1796,15 +1715,6 @@ help:
 	@echo "... source/src/menus.o"
 	@echo "... source/src/menus.i"
 	@echo "... source/src/menus.s"
-	@echo "... source/src/oggstream.o"
-	@echo "... source/src/oggstream.i"
-	@echo "... source/src/oggstream.s"
-	@echo "... source/src/openal.o"
-	@echo "... source/src/openal.i"
-	@echo "... source/src/openal.s"
-	@echo "... source/src/packetqueue.o"
-	@echo "... source/src/packetqueue.i"
-	@echo "... source/src/packetqueue.s"
 	@echo "... source/src/physics.o"
 	@echo "... source/src/physics.i"
 	@echo "... source/src/physics.s"

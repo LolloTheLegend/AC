@@ -5,6 +5,7 @@
 #include "protocol.h"
 #include "weapon.h"
 #include "model.h"
+#include "physics.h"
 
 enum                            // static entity types
 {
@@ -481,7 +482,6 @@ public:
 
     void damageroll(float damage)
     {
-        extern void clamproll(physent *pl);
         float damroll = 2.0f*damage;
         roll += roll>0 ? damroll : (roll<0 ? -damroll : (rnd(2) ? damroll : -damroll)); // give player a kick
         clamproll(this);

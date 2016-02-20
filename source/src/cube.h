@@ -37,6 +37,7 @@
 #include "crypto.h"
 #include "editing.h"
 #include "menus.h"
+#include "physics.h"
 
 #include "texture.h"
 #include "protos.h"                     // external function decls

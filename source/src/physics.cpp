@@ -71,9 +71,9 @@ bool raycubelos(const vec &from, const vec &to, float margin)
     return dist > max(limit - margin, 0.0f);
 }
 
-physent *hitplayer = NULL;
+static physent *hitplayer = NULL;
 
-bool plcollide(physent *d, physent *o, float &headspace, float &hi, float &lo)          // collide with physent
+static bool plcollide(physent *d, physent *o, float &headspace, float &hi, float &lo)          // collide with physent
 {
     if(o->state!=CS_ALIVE || !o->cancollide) return false;
     const float r = o->radius+d->radius;
@@ -91,7 +91,7 @@ bool plcollide(physent *d, physent *o, float &headspace, float &hi, float &lo)  
     return false;
 }
 
-bool cornertest(int mip, int x, int y, int dx, int dy, int &bx, int &by, int &bs)    // recursively collide with a mipmapped corner cube
+static bool cornertest(int mip, int x, int y, int dx, int dy, int &bx, int &by, int &bs)    // recursively collide with a mipmapped corner cube
 {
     sqr *w = wmip[mip];
     int mfactor = sfactor - mip;
@@ -109,7 +109,7 @@ bool cornertest(int mip, int x, int y, int dx, int dy, int &bx, int &by, int &bs
     return stest;
 }
 
-bool mmcollide(physent *d, float &hi, float &lo)           // collide with a mapmodel
+static bool mmcollide(physent *d, float &hi, float &lo)           // collide with a mapmodel
 {
     const float eyeheight = d->eyeheight;
     const float playerheight = eyeheight + d->aboveeye;
@@ -271,10 +271,10 @@ bool collide(physent *d, bool spawn, float drop, float rise, int level) // level
     return false;
 }
 
-VARP(maxroll, 0, 0, 20); // note: when changing max value, fix network transmission
+static VARP(maxroll, 0, 0, 20); // note: when changing max value, fix network transmission
 //VAR(recoilbackfade, 0, 100, 1000);
 
-void resizephysent(physent *pl, int moveres, int curtime, float min, float max)
+static void resizephysent(physent *pl, int moveres, int curtime, float min, float max)
 {
     if(pl->eyeheightvel==0.0f) return;
 
@@ -320,11 +320,11 @@ void clamproll(physent *pl)
     else if(pl->roll < -mroll) pl->roll = -mroll;
 }
 
-float var_f = 0;
-int var_i = 0;
-bool var_b = true;
+static float var_f = 0;
+static int var_i = 0;
+static bool var_b = true;
 
-FVARP(flyspeed, 1.0, 2.0, 5.0);
+static FVARP(flyspeed, 1.0, 2.0, 5.0);
 
 void moveplayer(physent *pl, int moveres, bool local, int curtime)
 {
@@ -661,9 +661,9 @@ void moveplayer(physent *pl, int moveres, bool local, int curtime)
     }
 }
 
-const int PHYSFPS = 200;
-const int PHYSFRAMETIME = 1000 / PHYSFPS;
-int physsteps = 0, physframetime = PHYSFRAMETIME, lastphysframe = 0;
+static const int PHYSFPS = 200;
+static const int PHYSFRAMETIME = 1000 / PHYSFPS;
+static int physsteps = 0, physframetime = PHYSFRAMETIME, lastphysframe = 0;
 
 void physicsframe()          // optimally schedule physics frames inside the graphics frames
 {
@@ -678,9 +678,9 @@ void physicsframe()          // optimally schedule physics frames inside the gra
     }
 }
 
-VAR(physinterp, 0, 1, 1);
+static VAR(physinterp, 0, 1, 1);
 
-void interppos(physent *pl)
+static void interppos(physent *pl)
 {
     pl->o = pl->newpos;
     pl->o.z += pl->eyeheight;
@@ -725,7 +725,7 @@ void movebounceent(bounceent *p, int moveres, bool local)
 
 // movement input code
 
-#define dir(name,v,d,s,os) void name(bool isdown) { player1->s = isdown; player1->v = isdown ? d : (player1->os ? -(d) : 0); player1->lastmove = lastmillis; }
+#define dir(name,v,d,s,os) static void name(bool isdown) { player1->s = isdown; player1->v = isdown ? d : (player1->os ? -(d) : 0); player1->lastmove = lastmillis; }
 
 dir(backward, move,   -1, k_down,  k_up)
 dir(forward,  move,    1, k_up,    k_down)
@@ -743,7 +743,7 @@ void attack(bool on)
     else player1->attacking = on;
 }
 
-void jumpn(bool on)
+static void jumpn(bool on)
 {
     if(intermission) return;
     if(player1->isspectating())
@@ -764,7 +764,7 @@ void updatecrouch(playerent *p, bool on)
     if(p==player1) audiomgr.playsoundc(on ? S_CROUCH : S_UNCROUCH);
 }
 
-void crouch(bool on)
+static void crouch(bool on)
 {
     if(player1->isspectating()) return;
     player1->trycrouch = on;
@@ -787,17 +787,17 @@ void fixcamerarange(physent *cam)
     while(cam->yaw>=360.0f) cam->yaw -= 360.0f;
 }
 
-FVARP(sensitivity, 1e-3f, 3.0f, 1000.0f);
-FVARP(scopesensscale, 1e-3f, 0.5f, 1000.0f);
-FVARP(sensitivityscale, 1e-3f, 1, 1000);
-FVARP(scopesens, 0, 0, 1000);
-VARP(scopesensfeel, 0, 0, 1);
-VARP(invmouse, 0, 0, 1);
-FVARP(mouseaccel, 0, 0, 1000);
-FVARP(mfilter, 0.0f, 0.0f, 6.0f);
-VARP(autoscopesens, 0, 0, 1);
+static FVARP(sensitivity, 1e-3f, 3.0f, 1000.0f);
+static FVARP(scopesensscale, 1e-3f, 0.5f, 1000.0f);
+static FVARP(sensitivityscale, 1e-3f, 1, 1000);
+static FVARP(scopesens, 0, 0, 1000);
+static VARP(scopesensfeel, 0, 0, 1);
+static VARP(invmouse, 0, 0, 1);
+static FVARP(mouseaccel, 0, 0, 1000);
+static FVARP(mfilter, 0.0f, 0.0f, 6.0f);
+static VARP(autoscopesens, 0, 0, 1);
 
-float testsens=0;
+static float testsens=0;
 bool senst=0;
 int tsens(int x)
 {
@@ -904,7 +904,7 @@ int tsens(int x)
     return 0;
 }
 
-void findsens()
+static void findsens()
 {
     if(!watchingdemo) {
         senst=1;
@@ -916,7 +916,7 @@ void findsens()
 }
 COMMAND(findsens, "");
 
-inline bool zooming(playerent *plx) { return (plx->weaponsel->type == GUN_SNIPER && ((sniperrifle *)plx->weaponsel)->scoped); }
+static inline bool zooming(playerent *plx) { return (plx->weaponsel->type == GUN_SNIPER && ((sniperrifle *)plx->weaponsel)->scoped); }
 
 void mousemove(int odx, int ody)
 {

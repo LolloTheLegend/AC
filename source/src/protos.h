@@ -505,25 +505,6 @@ extern void xmapbackup(const char *nickprefix, const char *nick);
 extern void writeallxmaps();
 extern int loadallxmaps();
 
-// physics
-extern float raycube(const vec &o, const vec &ray, vec &surface);
-extern bool raycubelos(const vec &from, const vec &to, float margin = 0);
-extern void moveplayer(physent *pl, int moveres, bool local);
-extern void moveplayer(physent *pl, int moveres, bool local, int curtime);
-extern void movebounceent(bounceent *p, int moveres, bool local);
-extern void entinmap(physent *d);
-extern void physicsframe();
-extern void mousemove(int dx, int dy);
-extern void fixcamerarange(physent *cam = camera1);
-extern void updatecrouch(playerent *p, bool on);
-extern bool objcollide(physent *d, const vec &objpos, float objrad, float objheight);
-extern bool collide(physent *d, bool spawn = false, float drop = 0, float rise = 0, int level = 7);
-extern void attack(bool on);
-extern void vecfromyawpitch(float yaw, float pitch, int move, int strafe, vec &m);
-extern void vectoyawpitch(const vec &v, float &yaw, float &pitch);
-
-
-// rendermodel
 extern void rendermodel(const char *mdl, int anim, int tex, float rad, const vec &o, float yaw, float pitch, float speed = 0, int basetime = 0, playerent *d = NULL, modelattach *a = NULL, float scale = 1.0f);
 extern void startmodelbatches();
 extern void endmodelbatches(bool flush = true);
