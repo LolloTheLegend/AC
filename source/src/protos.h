@@ -714,7 +714,6 @@ struct traceresult_s
      bool collided;
 };
 void TraceLine(vec from, vec to, dynent *pTracer, bool CheckPlayers, traceresult_s *tr, bool SkipTags=false);
-extern struct projectile *newprojectile(vec &from, vec &to, float speed, bool local, playerent *owner, int gun, int id = lastmillis);
 extern int burstshotssettings[NUMGUNS];
 
 // entities

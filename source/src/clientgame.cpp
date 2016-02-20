@@ -5,12 +5,12 @@
 
 int nextmode = 0;   // nextmode becomes gamemode after next map load
 VAR(gamemode, 1, 0, 0);
-VAR(nextGameMode, 1, 0, 0);
+static VAR(nextGameMode, 1, 0, 0);
 VARP(modeacronyms, 0, 1, 1);
 
 flaginfo flaginfos[2];
 
-void mode(int *n)
+static void mode(int *n)
 {
     nextmode = *n;
     nextGameMode = nextmode;
@@ -35,7 +35,7 @@ char *getclientmap() { return clientmap; }
 
 int getclientmode() { return gamemode; }
 
-extern bool sendmapidenttoserver;
+extern bool sendmapidenttoserver; //TODO: Lollo fix this extern
 
 void setskin(playerent *pl, int skin, int team)
 {
@@ -43,9 +43,9 @@ void setskin(playerent *pl, int skin, int team)
     pl->setskin(team, skin);
 }
 
-extern char *global_name;
+extern char *global_name; // TODO: Lollo fix this extern by #include
 
-bool duplicatename(playerent *d, char *name = NULL)
+static bool duplicatename(playerent *d, char *name = NULL)
 {
     if(!name) name = d->name;
     if(d!=player1 && !strcmp(name, player1->name)) return true;
@@ -109,13 +109,13 @@ const char *highlight(const char *text)
     return *result ? result : text;
 }
 
-void ignore(int *cn)
+static void ignore(int *cn)
 {
     playerent *d = getclient(*cn);
     if(d && d != player1) d->ignored = true;
 }
 
-void listignored()
+static void listignored()
 {
     string pl;
     pl[0] = '\0';
@@ -124,18 +124,18 @@ void listignored()
     else conoutf(_("no players were ignored."));
 }
 
-void clearignored(int *cn)
+static void clearignored(int *cn)
 {
     loopv(players) if(players[i] && (*cn < 0 || *cn == i)) players[i]->ignored = false;
 }
 
-void muteplayer(int *cn)
+static void muteplayer(int *cn)
 {
     playerent *d = getclient(*cn);
     if(d && d != player1) d->muted = true;
 }
 
-void listmuted()
+static void listmuted()
 {
     string pl;
     pl[0] = '\0';
@@ -144,7 +144,7 @@ void listmuted()
     else conoutf(_("no players were muted."));
 }
 
-void clearmuted(char *cn)
+static void clearmuted(char *cn)
 {
     loopv(players) if(players[i] && (*cn < 0 || *cn == i)) players[i]->muted = false;
 }
@@ -156,7 +156,7 @@ COMMAND(muteplayer, "i");
 COMMAND(listmuted, "");
 COMMAND(clearmuted, "i");
 
-void newname(const char *name)
+static void newname(const char *name)
 {
     if(name[0])
     {
@@ -176,7 +176,7 @@ void newname(const char *name)
     alias("curname", player1->name);
 }
 
-int teamatoi(const char *name)
+static int teamatoi(const char *name)
 {
     string uc;
     strtoupper(uc, name);
@@ -197,13 +197,13 @@ void newteam(char *name)
     else conoutf(_("your team is: %s"), team_string(player1->team));
 }
 
-void benchme()
+static void benchme()
 {
     if(team_isactive(player1->team) && servstate.mastermode == MM_MATCH)
         addmsg(SV_SWITCHTEAM, "ri", team_tospec(player1->team));
 }
 
-int _setskin(int s, int t)
+static int _setskin(int s, int t)
 {
     setskin(player1, s, t);
     addmsg(SV_SWITCHSKIN, "rii", player1->skin(0), player1->skin(1));
@@ -214,7 +214,7 @@ COMMANDF(skin_cla, "i", (int *s) { intret(_setskin(*s, TEAM_CLA)); });
 COMMANDF(skin_rvsf, "i", (int *s) { intret(_setskin(*s, TEAM_RVSF)); });
 COMMANDF(skin, "i", (int *s) { intret(_setskin(*s, player1->team)); });
 
-void curmodeattr(char *attr)
+static void curmodeattr(char *attr)
 {
     if(!strcmp(attr, "team")) { intret(m_teammode); return; }
     else if(!strcmp(attr, "arena")) { intret(m_arena); return; }
@@ -235,7 +235,7 @@ COMMANDF(curplayers, "", (void) { intret(players.length() + 1); });
 VARP(showscoresondeath, 0, 1, 1);
 VARP(autoscreenshot, 0, 0, 1);
 
-void stopdemo()
+static void stopdemo()
 {
     if(watchingdemo) enddemoplayback();
     else conoutf(_("not playing a demo"));
@@ -247,7 +247,7 @@ COMMAND(stopdemo, "");
 #define ATTR_FLOAT(name, attribute)  if(!strcmp(attr, #name)) { floatret(attribute); return; }
 #define ATTR_STR(name, attribute)    if(!strcmp(attr, #name)) { result(attribute); return; }
 
-void playerinfo(int *cn, const char *attr)
+static void playerinfo(int *cn, const char *attr)
 {
     if(!*attr || !attr) return;
 
@@ -310,7 +310,7 @@ void playerinfo(int *cn, const char *attr)
     conoutf("invalid attribute: %s", attr);
 }
 
-void playerinfolocal(const char *attr)
+static void playerinfolocal(const char *attr)
 {
     int cn = -1;
     playerinfo(&cn, attr);
@@ -319,7 +319,7 @@ void playerinfolocal(const char *attr)
 COMMANDN(player, playerinfo, "is");
 COMMANDN(player1, playerinfolocal, "s");
 
-void teaminfo(const char *team, const char *attr)
+static void teaminfo(const char *team, const char *attr)
 {
     if(!team || !attr || !m_teammode) return;
     int t = teamatoi(team); // get player clientnum
@@ -462,7 +462,7 @@ void zapplayer(playerent *&d)
     DELETEP(d);
 }
 
-void movelocalplayer()
+static void movelocalplayer()
 {
     if(player1->state==CS_DEAD && !player1->allowmove())
     {
@@ -483,7 +483,7 @@ void movelocalplayer()
 VARP(smoothmove, 0, 75, 100);
 VARP(smoothdist, 0, 8, 16);
 
-void predictplayer(playerent *d, bool move)
+static void predictplayer(playerent *d, bool move)
 {
     d->o = d->newpos;
     d->o.z += d->eyeheight;
@@ -506,7 +506,7 @@ void predictplayer(playerent *d, bool move)
     }
 }
 
-void moveotherplayers()
+static void moveotherplayers()
 {
     loopv(players) if(players[i] && players[i]->type==ENT_PLAYER)
     {
@@ -528,7 +528,7 @@ void moveotherplayers()
 }
 
 
-bool showhudtimer(int maxsecs, int startmillis, const char *msg, bool flash)
+static bool showhudtimer(int maxsecs, int startmillis, const char *msg, bool flash)
 {
     static string str = "";
     static int tickstart = 0, curticks = -1, maxticks = -1;
@@ -558,7 +558,7 @@ bool showhudtimer(int maxsecs, int startmillis, const char *msg, bool flash)
 
 int lastspawnattempt = 0;
 
-void showrespawntimer()
+static void showrespawntimer()
 {
     if(intermission || spawnpermission > SP_OK_NUM) return;
     if(m_arena)
@@ -574,7 +574,7 @@ void showrespawntimer()
 }
 
 struct scriptsleep { int wait, millis; char *cmd; bool persist; };
-vector<scriptsleep> sleeps;
+static vector<scriptsleep> sleeps;
 
 void addsleep(int msec, const char *cmd, bool persist)
 {
@@ -585,7 +585,7 @@ void addsleep(int msec, const char *cmd, bool persist)
     s.persist = persist;
 }
 
-void addsleep_(int *msec, char *cmd, int *persist)
+static void addsleep_(int *msec, char *cmd, int *persist)
 {
     addsleep(*msec, cmd, *persist != 0);
 }
@@ -635,11 +635,11 @@ void updateworld(int curtime, int lastmillis)        // main game update loop
 }
 
 #define SECURESPAWNDIST 15
-int spawncycle = -1;
-int fixspawn = 2;
+static int spawncycle = -1;
+static int fixspawn = 2;
 
 // returns -1 for a free place, else dist to the nearest enemy
-float nearestenemy(vec place, int team)
+static float nearestenemy(vec place, int team)
 {
     float nearestenemydist = -1;
     loopv(players)
@@ -741,16 +741,17 @@ void respawnself()
     }
 }
 
+// TODO: Lollo fix these 3 vars by #include proper header file/s
 extern int checkarea(int maplayout_factor, char *maplayout);
 extern int MA;
 extern float Mh;
 
-bool bad_map() // this function makes a pair with good_map from clients2c
+static bool bad_map() // this function makes a pair with good_map from clients2c
 {
     return (gamemode != GMODE_COOPEDIT && ( Mh >= MAXMHEIGHT || MA >= MAXMAREA ));
 }
 
-inline const char * spawn_message()
+static inline const char * spawn_message()
 {
     if (spawnpermission == SP_WRONGMAP)
     {
@@ -767,7 +768,7 @@ inline const char * spawn_message()
     // in large, friendly letters.
 }
 
-int waiting_permission = 0;
+static int waiting_permission = 0;
 
 bool tryrespawn()
 {
@@ -815,7 +816,7 @@ bool tryrespawn()
 VARP(hitsound, 0, 0, 2);
 
 // client kill messages
-void setkillmessage(int gun, bool gib, const char *message)
+static void setkillmessage(int gun, bool gib, const char *message)
 {
     if(!message || !*message)
     {
@@ -833,7 +834,7 @@ void setkillmessage(int gun, bool gib, const char *message)
 COMMANDF(fragmessage, "is", (int *gun, const char *message) { setkillmessage(*gun, false, message); });
 COMMANDF(gibmessage, "is", (int *gun, const char *message) { setkillmessage(*gun, true, message); });
 
-void burstshots(int gun, int shots)
+static void burstshots(int gun, int shots)
 {
     // args are passed as strings to differentiate 2 cases : shots_str == "0" or shots_str is empty (not specified from cubescript).
     if(gun >= 0 && gun < NUMGUNS && guns[gun].isauto)
@@ -937,7 +938,7 @@ void dokill(playerent *pl, playerent *act, bool gib, int gun)
     audiomgr.playsound(S_DIE1+rnd(2), pl);
 }
 
-void pstat_weap(int *cn)
+static void pstat_weap(int *cn)
 {
     string weapstring = "";
     playerent *pl = getclient(*cn);
@@ -1024,13 +1025,13 @@ void initclient()
     player1->team = TEAM_SPECT;
 }
 
-entity flagdummies[2] = // in case the map does not provide flags
+static entity flagdummies[2] = // in case the map does not provide flags
 {
     entity(-1, -1, -1, CTF_FLAG, 0, 0, 0, 0),
     entity(-1, -1, -1, CTF_FLAG, 0, 1, 0, 0)
 };
 
-void initflag(int i)
+static void initflag(int i)
 {
     flaginfo &f = flaginfos[i];
     f.flagent = &flagdummies[i];
@@ -1070,9 +1071,9 @@ void preparectf(bool cleanonly=false)
 }
 
 struct gmdesc { int mode; char *desc; };
-vector<gmdesc> gmdescs;
+static vector<gmdesc> gmdescs;
 
-void gamemodedesc(int *modenr, char *desc)
+static void gamemodedesc(int *modenr, char *desc)
 {
     if(!desc) return;
     struct gmdesc &gd = gmdescs.add();
@@ -1102,15 +1103,16 @@ void resetmap(bool mrproper)
     }
 }
 
-int suicided = -1;
+static int suicided = -1;
+// TODO: Lollo fix these extern by #including proper header files
 extern bool good_map();
 extern bool item_fail;
 extern int MA, F2F, Ma, Hhits;
 extern float Mh;
 
-VARP(mapstats_hud, 0, 0, 1);
+static VARP(mapstats_hud, 0, 0, 1);
 
-void showmapstats()
+static void showmapstats()
 {
     conoutf("\f2Map Quality Stats");
     conoutf("  The mean height is: %.2f", Mh);
@@ -1121,8 +1123,8 @@ void showmapstats()
 }
 COMMAND(showmapstats, "");
 
-VARP(showmodedescriptions, 0, 1, 1);
-extern bool canceldownloads;
+static VARP(showmodedescriptions, 0, 1, 1);
+extern bool canceldownloads; // TODO: Lollo fix this extern by #include proper header file
 
 void startmap(const char *name, bool reset, bool norespawn)   // called just after a map load
 {
@@ -1195,7 +1197,7 @@ void startmap(const char *name, bool reset, bool norespawn)   // called just aft
     }
 }
 
-void suicide()
+static void suicide()
 {
     if(player1->state == CS_ALIVE && suicided!=player1->lifesequence)
     {
@@ -1296,7 +1298,7 @@ void flagmsg(int flag, int message, int actor, int flagtime)
     }
 }
 
-void dropflag() { tryflagdrop(true); }
+static void dropflag() { tryflagdrop(true); }
 COMMAND(dropflag, "");
 
 char *votestring(int type, const char *arg1, const char *arg2, const char *arg3)
@@ -1380,7 +1382,8 @@ votedisplayinfo *newvotedisplayinfo(playerent *owner, int type, const char *arg1
     return v;
 }
 
-votedisplayinfo *curvote = NULL, *calledvote = NULL;
+votedisplayinfo *curvote = NULL;
+static votedisplayinfo * calledvote = NULL;
 
 void callvote(int type, const char *arg1, const char *arg2, const char *arg3)
 {
@@ -1435,7 +1438,7 @@ void callvote(int type, const char *arg1, const char *arg2, const char *arg3)
     else conoutf(_("%c3invalid vote"), CC);
 }
 
-void scallvote(int *type, const char *arg1, const char *arg2)
+static void scallvote(int *type, const char *arg1, const char *arg2)
 {
     if(type && inmainloop)
     {
@@ -1488,7 +1491,7 @@ int vote(int v)
     return 1;
 }
 
-VAR(votepending, 1, 0, 0);
+static VAR(votepending, 1, 0, 0);
 
 void displayvote(votedisplayinfo *v)
 {
@@ -1538,7 +1541,7 @@ const char *modestrings[] =
     "osok", "tosok", "bosok", "htf", "tktf", "ktf", "tpf", "tlss", "bpf", "blss", "btsurv", "btosok"
 };
 
-void setnext(char *mode, char *map)
+static void setnext(char *mode, char *map)
 {
     if(!multiplayer(false)) { //RR 10/12/12 - Is this the action we want?
         conoutf("You cannot use setnext in singleplayer.");
@@ -1569,7 +1572,7 @@ void setnext(char *mode, char *map)
 }
 COMMAND(setnext, "ss");
 
-void gonext(int *arg1)
+static void gonext(int *arg1)
 {
     if(calledvote || !multiplayer(false)) return;
     packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
@@ -1591,7 +1594,7 @@ void cleanplayervotes(playerent *p)
     if(curvote && curvote->owner==p) curvote->owner = NULL;
 }
 
-void whois(int *cn)
+static void whois(int *cn)
 {
     loopv(players) if(players[i] && players[i]->type == ENT_PLAYER && (*cn == -1 || players[i]->clientnum == *cn))
     {
@@ -1605,7 +1608,7 @@ void whois(int *cn)
 }
 COMMAND(whois, "i");
 
-void findcn(char *name)
+static void findcn(char *name)
 {
     loopv(players) if(players[i] && !strcmp(name, players[i]->name))
     {
@@ -1619,7 +1622,7 @@ COMMAND(findcn, "s");
 
 int sessionid = 0;
 
-void setadmin(int *claim, char *password)
+static void setadmin(int *claim, char *password)
 {
     if(!*claim && (player1->clientrole))
     {
@@ -1652,8 +1655,8 @@ void refreshsopmenu(void *menu, bool init)
     }
 }
 
-extern bool watchingdemo;
-VARP(spectatepersistent,0,1,1);
+extern bool watchingdemo; // TODO: Lollo fix this exter
+static VARP(spectatepersistent,0,1,1);
 
 // rotate through all spec-able players
 playerent *updatefollowplayer(int shiftdirection)
@@ -1685,14 +1688,14 @@ playerent *updatefollowplayer(int shiftdirection)
     return players[player1->followplayercn];
 }
 
-void spectate()
+static void spectate()
 {
     if(m_demo) return;
     if(!team_isspect(player1->team)) addmsg(SV_SWITCHTEAM, "ri", TEAM_SPECT);
     else tryrespawn();
 }
 
-void setfollowplayer(int cn)
+static void setfollowplayer(int cn)
 {
     // silently ignores invalid player-cn value passed
     if(players.inrange(cn) && players[cn] && !m_botmode)
@@ -1756,7 +1759,7 @@ void togglespect() // cycle through all spectating modes
     }
 }
 
-void changefollowplayer(int shift)
+static void changefollowplayer(int shift)
 {
     if(!m_botmode) updatefollowplayer(shift);
 }
@@ -1767,7 +1770,7 @@ COMMAND(togglespect, "");
 COMMANDF(changefollowplayer, "i", (int *dir) { changefollowplayer(*dir); });
 COMMANDF(setfollowplayer, "i", (int *cn) { setfollowplayer(*cn); });
 
-void serverextension(char *ext, char *args)
+static void serverextension(char *ext, char *args)
 {
     if(!ext || !ext[0]) return;
     size_t n = args ? strlen(args)+1 : 0;
