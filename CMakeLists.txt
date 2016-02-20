@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.3)
 
-set (CMAKE_CXX_COMPILER clang++)
-
 ####################################################################
 ######### Not needed: It's here for future development #############
 set (ENET_SRC_DIRECTORY "source/enet")
@@ -57,9 +55,6 @@ set(
         ${ASS_CUBE_SRCS_PATH}/log.cpp
         ${ASS_CUBE_SRCS_PATH}/main.cpp
         ${ASS_CUBE_SRCS_PATH}/menus.cpp
-        ${ASS_CUBE_SRCS_PATH}/oggstream.cpp
-        ${ASS_CUBE_SRCS_PATH}/openal.cpp
-        ${ASS_CUBE_SRCS_PATH}/packetqueue.cpp
         ${ASS_CUBE_SRCS_PATH}/physics.cpp
         ${ASS_CUBE_SRCS_PATH}/protocol.cpp
         ${ASS_CUBE_SRCS_PATH}/rendercubes.cpp

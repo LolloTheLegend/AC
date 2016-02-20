@@ -1,6 +1,9 @@
 #ifndef MODELCACHE_H
 #define MODELCACHE_H
 
+#include "tools.h"
+#include <stddef.h>
+
 template<class T> struct modelcacheentry
 {
     typedef modelcacheentry<T> entry;

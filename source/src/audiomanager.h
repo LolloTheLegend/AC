@@ -458,6 +458,7 @@ public:
 };
 
 extern audiomanager audiomgr;
+extern ov_callbacks oggcallbacks;
 
 void alclearerr();
 bool alerr(bool msg = true, int line = 0, const char *s = NULL, ...);
@@ -465,7 +466,6 @@ bool alerr(bool msg = true, int line = 0, const char *s = NULL, ...);
 #define ALERRF(fmt, ...) alerr(true, __LINE__, fmt, __VA_ARGS__)
 
 extern vector<soundconfig> gamesounds, mapsounds;
-extern ov_callbacks oggcallbacks;
 extern int soundvol;
 extern int audiodebug;
 
