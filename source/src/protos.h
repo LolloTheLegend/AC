@@ -11,8 +11,6 @@ extern int sfactor, ssize;              // ssize = 2^sfactor
 extern int cubicsize, mipsize;          // cubicsize = ssize^2
 extern physent *camera1;                // camera representing perspective of player, usually player1
 extern vector<bounceent *> bounceents;
-extern bool editmode;
-extern int unsavededits;
 extern vector<entity> ents;             // map entities
 extern vector<int> eh_ents;             // edithide entities
 extern vec worldpos, camup, camright, camdir; // current target of the crosshair in the world
@@ -486,26 +484,6 @@ extern int text_visible(const char *str, int hitx, int hity, int maxwidth);
 extern void text_pos(const char *str, int cursor, int &cx, int &cy, int maxwidth);
 extern void text_startcolumns();
 extern void text_endcolumns();
-
-// editing
-extern void cursorupdate();
-extern void toggleedit(bool force = false);
-extern char *editinfo();
-extern void makeundo(block &sel);
-extern void editdrag(bool isdown);
-extern void checkselections();
-extern void setvdeltaxy(int delta, block &sel);
-extern void editequalisexy(bool isfloor, block &sel);
-extern void edittypexy(int type, block &sel);
-extern void edittexxy(int type, int t, block &sel);
-extern void editheightxy(bool isfloor, int amount, block &sel);
-//extern bool noteditmode();
-extern bool noteditmode(const char* func = NULL);
-extern void pruneundos(int maxremain = 0);
-extern void storeposition(short p[]);
-extern void restoreposition(short p[]);
-extern void restoreeditundo(ucharbuf &q);
-extern int backupeditundo(vector<uchar> &buf, int undolimit, int redolimit);
 
 // renderhud
 enum

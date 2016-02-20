@@ -262,9 +262,6 @@ void render_seg_new(float vx, float vy, float vh, int mip, int x, int y, int xs,
         }
     }}}
 
-    extern vector<int> tagclipcubes;
-    extern bool showtagclipfocus;
-    extern int showtagclips;
     if(editmode && !showtagclipfocus && showtagclips) LOOPH   // tag clips
         if(mip)
         {

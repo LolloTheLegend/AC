@@ -1,5 +1,6 @@
 // editing.cpp: most map editing commands go here, entity editing commands are in world.cpp
 
+#include "editing.h"
 #include "cube.h"
 
 bool editmode = false;
@@ -13,20 +14,20 @@ vector<block> sels;
 #define loopselxy(sel, b) { makeundo(sel); loop(x,(sel).xs) loop(y,(sel).ys) { sqr *s = S((sel).x+x, (sel).y+y); b; } remip(sel); }
 #define loopselsxy(b) { loopv(sels) loopselxy(sels[i], b); }
 
-int cx, cy, ch;
+static int cx, cy, ch;
 
-int curedittex[] = { -1, -1, -1 };
+static int curedittex[] = { -1, -1, -1 };
 
-bool dragging = false;
-int lastx, lasty, lasth;
+static bool dragging = false;
+static int lastx, lasty, lasth;
 
-int lasttype = 0, lasttex = 0;
-sqr rtex;
+static int lasttype = 0, lasttex = 0;
+static sqr rtex;
 
-VAR(editing, 1, 0, 0);
+static VAR(editing, 1, 0, 0);
 VAR(unsavededits, 1, 0, 0);
 
-VAR(editmetakeydown, 1, 0, 0);
+static VAR(editmetakeydown, 1, 0, 0);
 COMMANDF(editmeta, "d", (bool on) { editmetakeydown = on ? 1 : 0; } );
 
 void toggleedit(bool force)
@@ -59,7 +60,7 @@ void edittoggle() { toggleedit(false); }
 
 COMMAND(edittoggle, "");
 
-bool correctsel(block &s)                                       // ensures above invariant
+static bool correctsel(block &s)                                       // ensures above invariant
 {
     int bsize = ssize - MINBORD;
     if(s.xs+s.x>bsize) s.xs = bsize-s.x;
@@ -78,12 +79,12 @@ bool noteditmode(const char* func)
     return !editmode;
 }
 
-inline bool selset()
+static inline bool selset()
 {
     return (sels.length() > 0);
 }
 
-bool noselection()
+static bool noselection()
 {
     if(!selset()) conoutf("no selection");
     return !selset();
@@ -115,7 +116,7 @@ char *editinfo()
 // multiple sels
 
 // add a selection to the list
-void addselection(int x, int y, int xs, int ys, int h)
+static void addselection(int x, int y, int xs, int ys, int h)
 {
     block &s = sels.add();
     s.x = x; s.y = y; s.xs = xs; s.ys = ys; s.h = h;
@@ -123,7 +124,7 @@ void addselection(int x, int y, int xs, int ys, int h)
 }
 
 // reset all selections
-void resetselections()
+static void resetselections()
 {
     sels.shrink(0);
 }
@@ -135,7 +136,7 @@ void checkselections()
 }
 
 // update current selection, or add a new one
-void makesel(bool isnew)
+static void makesel(bool isnew)
 {
     if(isnew || sels.length() == 0) addselection(min(lastx, cx), min(lasty, cy), abs(lastx-cx)+1, abs(lasty-cy)+1, max(lasth, ch));
     else
@@ -156,26 +157,26 @@ COMMANDF(selxs, "", (void) { SEL_ATTR(xs); });
 COMMANDF(selys, "", (void) { SEL_ATTR(ys); });
 #undef SEL_ATTR
 
-VAR(flrceil,0,0,2);
-VAR(editaxis,0,0,13);
-VARP(showgrid,0,1,1);
+static VAR(flrceil,0,0,2);
+static VAR(editaxis,0,0,13);
+static VARP(showgrid,0,1,1);
 
 // VC8 optimizer screws up rendering somehow if this is an actual function
 #define sheight(s,t,z) (!flrceil ? (s->type==FHF ? s->floor-t->vdelta/4.0f : (float)s->floor) : (s->type==CHF ? s->ceil+t->vdelta/4.0f : (float)s->ceil))
 
 // remove those two after playing with the values a bit :)
-VAR(tagnum, 1, 14, 100);
-VAR(tagnumfull, 0, 0, 100);
-VAR(taglife, 1, 30, 1000);
+static VAR(tagnum, 1, 14, 100);
+static VAR(tagnumfull, 0, 0, 100);
+static VAR(taglife, 1, 30, 1000);
 // and have mercy with old graphics cards...
 
 vector<int> tagclipcubes;
 bool showtagclipfocus = false;
 COMMANDF(showtagclipfocus, "d", (bool on) { showtagclipfocus = on; } );
 VAR(showtagclips, 0, 1, 1);
-FVAR(tagcliplinewidth, 0.2, 1, 3);
+static FVAR(tagcliplinewidth, 0.2, 1, 3);
 
-inline void forceinsideborders(int &xy)
+static inline void forceinsideborders(int &xy)
 {
     if(xy < MINBORD) xy = MINBORD;
     if(xy >= ssize - MINBORD) xy = ssize - MINBORD - 1;
@@ -313,8 +314,8 @@ void cursorupdate()                                     // called every frame fr
     glLineWidth(1);
 }
 
-vector<block *> undos, redos;                           // unlimited undo
-VAR(undomegs, 0, 5, 50);                                // bounded by n megs
+static vector<block *> undos, redos;                           // unlimited undo
+static VAR(undomegs, 0, 5, 50);                                // bounded by n megs
 
 void pruneundos(int maxremain)                          // bound memory
 {
@@ -355,7 +356,7 @@ void restoreposition(short p[])
     player1->resetinterp();
 }
 
-void restoreposition(block &sel)
+static void restoreposition(block &sel)
 {
     restoreposition(sel.p);
     resetselections();
@@ -363,7 +364,7 @@ void restoreposition(block &sel)
     checkselections();
 }
 
-void editundo()
+static void editundo()
 {
     EDITMP;
     if(undos.empty()) { conoutf("nothing more to undo"); return; }
@@ -375,7 +376,7 @@ void editundo()
     unsavededits++;
 }
 
-void editredo()
+static void editredo()
 {
     EDITMP;
     if(redos.empty()) { conoutf("nothing more to redo"); return; }
@@ -386,8 +387,6 @@ void editredo()
     freeblock(p);
     unsavededits++;
 }
-
-extern int worldiodebug;
 
 void restoreeditundo(ucharbuf &q)
 {
@@ -424,7 +423,7 @@ void restoreeditundo(ucharbuf &q)
     if(undos.length() || redos.length()) conoutf("restored editing history: %d undos and %d redos", undos.length(), redos.length());
 }
 
-int rlencodeundo(int type, vector<uchar> &t, block *s)
+static int rlencodeundo(int type, vector<uchar> &t, block *s)
 {
     putuint(t, type);
     putuint(t, s->x);
@@ -471,15 +470,15 @@ int backupeditundo(vector<uchar> &buf, int undolimit, int redolimit)
     return numundo;
 }
 
-vector<block *> copybuffers;
+static vector<block *> copybuffers;
 
-void resetcopybuffers()
+static void resetcopybuffers()
 {
     loopv(copybuffers) freeblock(copybuffers[i]);
     copybuffers.shrink(0);
 }
 
-void copy()
+static void copy()
 {
     EDITSELMP;
     resetcopybuffers();
@@ -491,7 +490,7 @@ void copy()
 
 }
 
-void paste()
+static void paste()
 {
     EDITSELMP;
     if(!copybuffers.length()) { conoutf("nothing to paste"); return; }
@@ -519,7 +518,7 @@ void paste()
 }
 
 // Count the walls of type "type" contained in the current selection
-void countwalls(int *type)
+static void countwalls(int *type)
 {
     int counter = 0;
     EDITSELMP;
@@ -532,7 +531,7 @@ void countwalls(int *type)
     intret(counter);
 }
 
-void tofronttex()                                       // maintain most recently used of the texture lists when applying texture
+static void tofronttex()                                       // maintain most recently used of the texture lists when applying texture
 {
     loopi(3)
     {
@@ -590,7 +589,7 @@ void editheightxy(bool isfloor, int amount, block &sel)
     });
 }
 
-void editheight(int *flr, int *amount)
+static void editheight(int *flr, int *amount)
 {
     EDITSEL;
     bool isfloor = *flr==0;
@@ -616,7 +615,7 @@ void edittexxy(int type, int t, block &sel)
     });
 }
 
-void edittex(int type, int dir)
+static void edittex(int type, int dir)
 {
     EDITSEL;
     if(type<0 || type>3) return;
@@ -634,7 +633,7 @@ void edittex(int type, int dir)
     unsavededits++;
 }
 
-void settex(int texture, int type)
+static void settex(int texture, int type)
 {
     EDITSEL;
     if(type<0 || type>3) return;
@@ -658,7 +657,7 @@ void settex(int texture, int type)
     unsavededits++;
 }
 
-void replace()
+static void replace()
 {
     EDITSELMP;
     loop(x,ssize) loop(y,ssize)
@@ -682,7 +681,7 @@ void edittypexy(int type, block &sel)
     loopselxy(sel, s->type = type);
 }
 
-void edittype(int type)
+static void edittype(int type)
 {
     EDITSEL;
     loopv(sels)
@@ -698,9 +697,9 @@ void edittype(int type)
     }
 }
 
-void heightfield(int *t) { edittype(*t==0 ? FHF : CHF); }
-void solid(int *t)       { edittype(*t==0 ? SPACE : SOLID); }
-void corner()           { edittype(CORNER); }
+static void heightfield(int *t) { edittype(*t==0 ? FHF : CHF); }
+static void solid(int *t)       { edittype(*t==0 ? SPACE : SOLID); }
+static void corner()           { edittype(CORNER); }
 
 COMMAND(heightfield, "i");
 COMMAND(solid, "i");
@@ -721,7 +720,7 @@ void editequalisexy(bool isfloor, block &sel)
     });
 }
 
-void equalize(int *flr)
+static void equalize(int *flr)
 {
     bool isfloor = *flr==0;
     EDITSEL;
@@ -741,7 +740,7 @@ void setvdeltaxy(int delta, block &sel)
     remipmore(sel);
 }
 
-void setvdelta(int delta)
+static void setvdelta(int delta)
 {
     EDITSEL;
     loopv(sels)
@@ -751,11 +750,11 @@ void setvdelta(int delta)
     }
 }
 
-const int MAXARCHVERT = 50;
-int archverts[MAXARCHVERT][MAXARCHVERT];
-bool archvinit = false;
+static const int MAXARCHVERT = 50;
+static int archverts[MAXARCHVERT][MAXARCHVERT];
+static bool archvinit = false;
 
-void archvertex(int *span, int *vert, int *delta)
+static void archvertex(int *span, int *vert, int *delta)
 {
     if(!archvinit)
     {
@@ -766,7 +765,7 @@ void archvertex(int *span, int *vert, int *delta)
     archverts[*span][*vert] = *delta;
 }
 
-void arch(int *sidedelta)
+static void arch(int *sidedelta)
 {
     EDITSELMP;
     loopv(sels)
@@ -784,7 +783,7 @@ void arch(int *sidedelta)
     }
 }
 
-void slope(int xd, int yd)
+static void slope(int xd, int yd)
 {
     EDITSELMP;
     loopv(sels)
@@ -800,7 +799,7 @@ void slope(int xd, int yd)
     }
 }
 
-void perlin(int scale, int seed, int psize)
+static void perlin(int scale, int seed, int psize)
 {
     EDITSELMP;
     loopv(sels)
@@ -818,6 +817,7 @@ void perlin(int scale, int seed, int psize)
     }
 }
 
+// TODO: Lollo fix this utter crap
 VARF(fullbright, 0, 0, 1,
     if(fullbright)
     {
@@ -827,19 +827,19 @@ VARF(fullbright, 0, 0, 1,
     else calclight();
 );
 
-void edittag(int *tag)
+static void edittag(int *tag)
 {
     EDITSELMP;
     loopselsxy(s->tag = *tag);
 }
 
-void newent(char *what, int *a1, int *a2, int *a3, int *a4)
+static void newent(char *what, int *a1, int *a2, int *a3, int *a4)
 {
     EDITSEL;
     loopv(sels) newentity(-1, sels[i].x, sels[i].y, (int)camera1->o.z, what, *a1, *a2, *a3, *a4);
 }
 
-void movemap(int xo, int yo, int zo) // move whole map
+static void movemap(int xo, int yo, int zo) // move whole map
 {
     EDITMP;
     if(!worldbordercheck(MINBORD + max(-xo, 0), MINBORD + max(xo, 0), MINBORD + max(-yo, 0), MINBORD + max(yo, 0), max(zo, 0), max(-zo, 0)))
@@ -879,7 +879,7 @@ void movemap(int xo, int yo, int zo) // move whole map
     unsavededits++;
 }
 
-void selfliprotate(block &sel, int dir)
+static void selfliprotate(block &sel, int dir)
 {
     makeundo(sel);
     block *org = blockcopy(sel);
@@ -907,7 +907,7 @@ void selfliprotate(block &sel, int dir)
     freeblock(org);
 }
 
-void selectionrotate(int dir)
+static void selectionrotate(int dir)
 {
     EDITSELMP;
     dir &= 3;
@@ -919,7 +919,7 @@ void selectionrotate(int dir)
     }
 }
 
-void selectionflip(char *axis)
+static void selectionflip(char *axis)
 {
     EDITSELMP;
     char c = toupper(*axis);
@@ -949,7 +949,7 @@ COMMAND(selectionflip, "s");
 COMMAND(countwalls, "i");
 COMMANDF(settex, "ii", (int *texture, int *type) { settex(*texture, *type); });
 
-void transformclipentities()  // transforms all clip entities to tag clips, if they are big enough (so, that no player could be above or below them)
+static void transformclipentities()  // transforms all clip entities to tag clips, if they are big enough (so, that no player could be above or below them)
 {
     EDITMP;
     int total = 0, thisrun;
