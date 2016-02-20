@@ -1,6 +1,9 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+
+#include "tools.h"
+
 #define MAXCLIENTS 256                  // in a multiplayer game, can be arbitrarily changed
 #define DEFAULTCLIENTS 6
 #define MAXTRANS 5000                   // max amount of data to swallow in 1 go
@@ -171,6 +174,36 @@ enum
 #define FTXT__FAVCATEGORY   (FTXT_NOWHITE | FTXT_ALLOWBLANKS | FTXT_NOCOLOR)
 #define FTXT__GLOBALNAME    (FTXT_NOWHITE | FTXT_NOCOLOR | FTXT_FILLBLANKS)
 
+
+
+void putint(ucharbuf &p, int n);
+void putint(packetbuf &p, int n);
+void putint(vector<uchar> &p, int n);
+int getint(ucharbuf &p);
+void putuint(ucharbuf &p, int n);
+void putuint(packetbuf &p, int n);
+void putuint(vector<uchar> &p, int n);
+int getuint(ucharbuf &p);
+void putfloat(ucharbuf &p, float f);
+void putfloat(packetbuf &p, float f);
+void putfloat(vector<uchar> &p, float f);
+float getfloat(ucharbuf &p);
+void sendstring(const char *t, ucharbuf &p);
+void sendstring(const char *t, packetbuf &p);
+void sendstring(const char *t, vector<uchar> &p);
+void getstring(char *t, ucharbuf &p, int len = MAXTRANS);
+char *filtertext(char *dst, const char *src, int flags = 1, int len = sizeof(string)-1);
+void filterrichtext(char *dst, const char *src, int len = sizeof(string)-1);
+void filterlang(char *d, const char *s);
+void trimtrailingwhitespace(char *s);
+void cutcolorstring(char *text, int len);
+const char *fullmodestr(int n);
+const char *acronymmodestr(int n);
+const char *modestr(int n, bool acronyms = false);
+const char *voteerrorstr(int n);
+const char *mmfullname(int n);
+int defaultgamelimit(int gamemode);
+int msgsizelookup(int msg);
 
 #endif	// PROTOCOL_H
 

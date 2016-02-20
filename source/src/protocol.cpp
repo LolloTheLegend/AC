@@ -276,7 +276,7 @@ void cutcolorstring(char *text, int len)
     }
 }
 
-const char *modefullnames[] =
+static const char *modefullnames[] =
 {
     "demo playback",
     "team deathmatch", "coopedit", "deathmatch", "survivor",
@@ -285,15 +285,15 @@ const char *modefullnames[] =
     "keep the flag", "team pistol frenzy", "team last swiss standing", "bot pistol frenzy", "bot last swiss standing", "bot team survivor", "bot team one shot, one kill"
 };
 
-const char *modeacronymnames[] =
+static const char *modeacronymnames[] =
 {
     "DEMO",
     "TDM", "coop", "DM", "SURV", "TSURV", "CTF", "PF", "BTDM", "BDM", "LSS",
     "OSOK", "TOSOK", "BOSOK", "HTF", "TKTF", "KTF", "TPF", "TLSS", "BPF", "BLSS", "BTSURV", "BTOSOK"
 };
 
-const char *voteerrors[] = { "voting is currently disabled", "there is already a vote pending", "already voted", "can't vote that often", "this vote is not allowed in the current environment (singleplayer/multiplayer)", "no permission", "invalid vote", "server denied your call", "the next map/mode is already set" };
-const char *mmfullnames[] = { "open", "private", "match" };
+static const char *voteerrors[] = { "voting is currently disabled", "there is already a vote pending", "already voted", "can't vote that often", "this vote is not allowed in the current environment (singleplayer/multiplayer)", "no permission", "invalid vote", "server denied your call", "the next map/mode is already set" };
+static const char *mmfullnames[] = { "open", "private", "match" };
 
 const char *fullmodestr(int n) { return (n>=-1 && size_t(n+1) < sizeof(modefullnames)/sizeof(modefullnames[0])) ? modefullnames[n+1] : "unknown"; }
 const char *acronymmodestr(int n) { return (n>=-1 && size_t(n+1) < sizeof(modeacronymnames)/sizeof(modeacronymnames[0])) ? modeacronymnames[n+1] : "UNK"; } // 'n/a' bad on *nix filesystem (demonameformat)

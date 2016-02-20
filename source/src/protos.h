@@ -536,9 +536,8 @@ extern void perlinarea(block &b, int scale, int seed, int psize);
 #endif
 
 // protocol [client and server]
-extern const char *acronymmodestr(int n);
-extern const char *fullmodestr(int n);
-extern int defaultgamelimit(int gamemode);
+
+
 
 // command
 extern bool per_idents, neverpersist;
@@ -547,9 +546,6 @@ extern int curscontext();
 extern int screenshottype;
 
 // server
-extern const char *modestr(int n, bool acronyms = false);
-extern const char *voteerrorstr(int n);
-extern const char *mmfullname(int n);
 extern void fatal(const char *s, ...);
 extern void initserver(bool dedicated, int argc = 0, char **argv = NULL);
 extern void cleanupserver();
@@ -557,27 +553,7 @@ extern void localconnect();
 extern void localdisconnect();
 extern void localclienttoserver(int chan, ENetPacket *);
 extern void serverslice(uint timeout);
-extern void putint(ucharbuf &p, int n);
-extern void putint(packetbuf &p, int n);
-extern void putint(vector<uchar> &p, int n);
-extern int getint(ucharbuf &p);
-extern void putuint(ucharbuf &p, int n);
-extern void putuint(packetbuf &p, int n);
-extern void putuint(vector<uchar> &p, int n);
-extern int getuint(ucharbuf &p);
-extern void putfloat(ucharbuf &p, float f);
-extern void putfloat(packetbuf &p, float f);
-extern void putfloat(vector<uchar> &p, float f);
-extern float getfloat(ucharbuf &p);
-extern void sendstring(const char *t, ucharbuf &p);
-extern void sendstring(const char *t, packetbuf &p);
-extern void sendstring(const char *t, vector<uchar> &p);
-extern void getstring(char *t, ucharbuf &p, int len = MAXTRANS);
-extern char *filtertext(char *dst, const char *src, int flags = 1, int len = sizeof(string)-1);
-extern void filterrichtext(char *dst, const char *src, int len = sizeof(string)-1);
-extern void filterlang(char *d, const char *s);
-extern void trimtrailingwhitespace(char *s);
-extern void cutcolorstring(char *text, int len);
+
 extern void startintermission();
 extern void restoreserverstate(vector<entity> &ents);
 extern string mastername;
@@ -585,7 +561,6 @@ extern int masterport, mastertype;
 extern ENetSocket connectmaster();
 extern uchar *retrieveservers(uchar *buf, int buflen);
 extern void serverms(int mode, int numplayers, int minremain, char *smapname, int millis, const ENetAddress &localaddr, int *mnum, int *msend, int *mrec, int *cnum, int *csend, int *crec, int protocol_version);
-extern int msgsizelookup(int msg);
 extern const char *genpwdhash(const char *name, const char *pwd, int salt);
 extern void servermsinit(const char *master, const char *ip, int serverport, bool listen);
 extern bool serverpickup(int i, int sender);
