@@ -28,3 +28,4 @@ cmake_install.cmake
 /server
 /compile_commands.json
 /notes.txt
+/nbproject/

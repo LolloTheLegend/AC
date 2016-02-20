@@ -34,6 +34,7 @@
 #include "client.h"
 #include "clientgame.h"
 #include "clients2c.h"
+#include "crypto.h"
 #include "protos.h"                     // external function decls
 
 #endif

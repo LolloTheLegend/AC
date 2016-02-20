@@ -663,19 +663,6 @@ extern const char *acronymmodestr(int n);
 extern const char *fullmodestr(int n);
 extern int defaultgamelimit(int gamemode);
 
-// crypto // for AUTH
-extern void genprivkey(const char *seed, vector<char> &privstr, vector<char> &pubstr);
-extern bool hashstring(const char *str, char *result, int maxlen);
-const char *genpwdhash(const char *name, const char *pwd, int salt);
-extern void answerchallenge(const char *privstr, const char *challenge, vector<char> &answerstr);
-extern void *parsepubkey(const char *pubstr);
-extern void freepubkey(void *pubkey);
-extern void *genchallenge(void *pubkey, const void *seed, int seedlen, vector<char> &challengestr);
-extern void freechallenge(void *answer);
-extern bool checkchallenge(const char *answerstr, void *correct);
-
-// console
-
 // command
 extern bool per_idents, neverpersist;
 extern void changescriptcontext(int newcontext);

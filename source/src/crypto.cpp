@@ -1,3 +1,4 @@
+#include "crypto.h"
 #include "cube.h"
 
 ///////////////////////// cryptography /////////////////////////////////
@@ -21,7 +22,7 @@ namespace tiger
 
     chunk sboxes[4*256];
 
-    void compress(const chunk *str, chunk state[3])
+    static void compress(const chunk *str, chunk state[3])
     {
         chunk a, b, c;
         chunk aa, bb, cc;
@@ -77,7 +78,7 @@ namespace tiger
         state[2] = c;
     }
 
-    void gensboxes()
+    static void gensboxes()
     {
         const char *str = "Tiger - A Fast New Hash Function, by Ross Anderson and Eli Biham";
         chunk state[3] = { 0x0123456789ABCDEFULL, 0xFEDCBA9876543210ULL, 0xF096A5B4C3B2E187ULL };
@@ -101,7 +102,7 @@ namespace tiger
         }
     }
 
-    void hash(const uchar *str, int length, hashval &val)
+    static void hash(const uchar *str, int length, hashval &val)
     {
         static bool init = false;
         if(!init) { gensboxes(); init = true; }
