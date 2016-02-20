@@ -595,7 +595,6 @@ extern void loadskin(const char *dir, const char *altdir, Texture *&skin);
 extern model *loadmodel(const char *name, int i = -1, bool trydl = false);
 extern void preload_playermodels();
 extern void preload_entmodels();
-extern void preload_hudguns();
 extern void preload_mapmodels(bool trydl = false);
 extern void renderclients();
 extern void renderclient(playerent *d);

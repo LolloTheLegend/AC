@@ -218,6 +218,7 @@ void renderbounceents(void);
 void addgib(playerent *d);
 void r_accuracy(int h);
 void checkweaponstate();
+void preload_hudguns();
 
 #endif	// WEAPON_H
 
