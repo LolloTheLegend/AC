@@ -28,11 +28,12 @@ struct stripbatch
     strips tris, tristrips, quads;
 };
 
-stripbatch skystrips = { DEFAULT_SKY };
-stripbatch stripbatches[256];
-uchar renderedtex[256];
-int renderedtexs = 0;
+static stripbatch skystrips = { DEFAULT_SKY };
+static stripbatch stripbatches[256];
+static uchar renderedtex[256];
+static int renderedtexs = 0;
 
+// TODO: Lollo fix this extern
 extern int ati_mda_bug;
 
 #define RENDERSTRIPS(strips, type) \
@@ -73,7 +74,7 @@ void renderstrips()
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 }
 
-void addstrip(int type, int tex, int start, int n)
+static void addstrip(int type, int tex, int start, int n)
 {
     stripbatch *sb = NULL;
     if(tex==DEFAULT_SKY)
@@ -123,23 +124,22 @@ enum
 int nquads;
 
 // for testing purpose. UNDOME on release.
-const float texturescale = 32.0f;
-//VARP(texturescale, 16, 32, 64);
+static const float texturescale = 32.0f;
 
 #define TEXTURESCALE (float(texturescale) * ((uniformtexres && t->scale>1.0f) ? 1.0f : t->scale))
 
-int striptype = 0, striptex, oh, oy, ox, odir;                         // the o* vars are used by the stripification
-int ol1r, ol1g, ol1b, ol2r, ol2g, ol2b;
-float ofloor, oceil;
-bool ohf;
-int firstindex;
-bool showm = false, showef = false;
+static int striptype = 0, striptex, oh, oy, ox, odir;                         // the o* vars are used by the stripification
+static int ol1r, ol1g, ol1b, ol2r, ol2g, ol2b;
+static float ofloor, oceil;
+static bool ohf;
+static int firstindex;
+static bool showm = false, showef = false;
 
 COMMANDF(showmip, "",() { showm = !showm; });
 COMMANDF(showfocuscubedetails, "",() { showef = !showef; });
 
-const char *cubetypes[] = {"SOLID", "CORNER", "FHF", "CHF", "SPACE"};
-const char *cubetypename(int t) { return t >= 0 && t < SEMISOLID ? cubetypes[t] : "unknown"; }
+static const char *cubetypes[] = {"SOLID", "CORNER", "FHF", "CHF", "SPACE"};
+static const char *cubetypename(int t) { return t >= 0 && t < SEMISOLID ? cubetypes[t] : "unknown"; }
 
 void mipstats(const int a[]) { if(showm && !showef) hudeditf(HUDMSG_MIPSTATS, "1x1/2x2/4x4/8x8: %d / %d / %d / %d", a[0], a[1], a[2], a[3]); }
 
@@ -154,7 +154,7 @@ bool editfocusdetails(sqr *s)
     return false;
 }
 
-VAR(mergestrips, 0, 1, 1);
+static VAR(mergestrips, 0, 1, 1);
 
 #define stripend(verts) \
     if(striptype) \
@@ -171,8 +171,8 @@ VAR(mergestrips, 0, 1, 1);
 
 void finishstrips() { stripend(verts); }
 
-sqr sbright, sdark;
-VARP(lighterror, 1, 4, 100);
+static sqr sbright, sdark;
+static VARP(lighterror, 1, 4, 100);
 
 void render_flat(int wtex, int x, int y, int size, int h, sqr *l1, sqr *l4, sqr *l3, sqr *l2, bool isceil)  // floor/ceil quads
 {
@@ -299,7 +299,7 @@ void render_flatdelta(int wtex, int x, int y, int size, float h1, float h4, floa
     nquads++;
 }
 
-void render_2tris(sqr *h, sqr *s, int x1, int y1, int x2, int y2, int x3, int y3, sqr *l1, sqr *l2, sqr *l3)   // floor/ceil tris on a corner cube
+static void render_2tris(sqr *h, sqr *s, int x1, int y1, int x2, int y2, int x3, int y3, sqr *l1, sqr *l2, sqr *l3)   // floor/ceil tris on a corner cube
 {
     stripend(verts);
 
@@ -423,7 +423,7 @@ void resetcubes()
 }
 
 struct shadowvertex { float u, v, x, y, z; };
-vector<shadowvertex> shadowverts;
+static vector<shadowvertex> shadowverts;
 
 static void resetshadowverts()
 {
@@ -462,7 +462,7 @@ static void rendershadowstrips()
     v.x = (float)(v1); v.y = (float)(v2); v.z = (float)(v3); \
 }
 
-void rendershadow_tri(sqr *h, int x1, int y1, int x2, int y2, int x3, int y3)   // floor tris on a corner cube
+static void rendershadow_tri(sqr *h, int x1, int y1, int x2, int y2, int x3, int y3)   // floor tris on a corner cube
 {
     stripend(shadowverts);
 
@@ -472,7 +472,7 @@ void rendershadow_tri(sqr *h, int x1, int y1, int x2, int y2, int x3, int y3)   
     addstrip(mergestrips ? GL_TRIANGLES : GL_TRIANGLE_STRIP, DEFAULT_FLOOR, shadowverts.length()-3, 3);
 }
 
-void rendershadow_tris(int x, int y, bool topleft, sqr *h1, sqr *h2)
+static void rendershadow_tris(int x, int y, bool topleft, sqr *h1, sqr *h2)
 {
     if(topleft)
     {

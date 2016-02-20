@@ -269,19 +269,6 @@ static inline Texture *lookupworldtexture(int tex, bool trydl = true)
 
 struct zone { int x1, x2, y1, y2, color; }; // zones (drawn on the minimap)
 
-// rendercubes
-extern void mipstats(const int a[]);
-extern bool editfocusdetails(sqr *s);
-extern void render_flat(int tex, int x, int y, int size, int h, sqr *l1, sqr *l2, sqr *l3, sqr *l4, bool isceil);
-extern void render_flatdelta(int wtex, int x, int y, int size, float h1, float h2, float h3, float h4, sqr *l1, sqr *l2, sqr *l3, sqr *l4, bool isceil);
-extern void render_square(int wtex, float floor1, float floor2, float ceil1, float ceil2, int x1, int y1, int x2, int y2, int size, sqr *l1, sqr *l2, bool topleft, int dir);
-extern void render_tris(int x, int y, int size, bool topleft, sqr *h1, sqr *h2, sqr *s, sqr *t, sqr *u, sqr *v);
-extern void resetcubes();
-extern void setupstrips();
-extern void renderstripssky();
-extern void renderstrips();
-extern void rendershadow(int x, int y, int xs, int ys, const vec &texgenS, const vec &texgenT);
-
 // water
 extern void setwatercolor(const char *r = "", const char *g = "", const char *b = "", const char *a = "");
 extern void calcwaterscissor();

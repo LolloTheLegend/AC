@@ -40,6 +40,7 @@
 #include "physics.h"
 
 #include "texture.h"
+#include "rendercubes.h"
 #include "protos.h"                     // external function decls
 
 #endif
