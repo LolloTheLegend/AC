@@ -1,5 +1,5 @@
-#ifndef ENTITY_H
-#define ENTITY_H
+#ifndef ENTITIES_H
+#define ENTITIES_H
 
 #include "audiomanager.h"
 #include "protocol.h"
@@ -679,6 +679,31 @@ struct package
     package() : name(NULL), type(-1), number(0), pending(false), source(NULL), curl(NULL) {}
 };
 #endif
+
+
+extern vector<entity> ents;  // map entities
+extern vector<int> eh_ents;             // edithide entities
+extern const char *entmdlnames[];
+extern vector<int> changedents;
+
+
+
+void rendermapmodels();
+void renderentities();
+void pickupeffects(int n, playerent *d);
+void checkitems(playerent *d);
+void spawnallitems();
+void resetspawns(int type = -1);
+void setspawn(int i, bool on);
+void flagpickup(int fln);
+void tryflagdrop(bool manual = false);
+void flagreturn(int fln);
+void flagscore(int fln);
+void flagstolen(int flag, int act);
+void flagdropped(int flag, float x, float y, float z);
+void flaginbase(int flag);
+void flagidle(int flag);
+void syncentchanges(bool force = false);
 
 #endif	// ENTITY_H
 

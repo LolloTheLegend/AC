@@ -1,9 +1,9 @@
 #ifndef SOURCE_SRC_CLIENTGAME_H_
 #define SOURCE_SRC_CLIENTGAME_H_
 
+#include <entities.h>
 #include "tools.h"
 #include "protocol.h"
-#include "entity.h"
 
 class playerent;
 class botent;

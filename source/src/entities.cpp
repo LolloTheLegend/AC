@@ -2,8 +2,8 @@
 
 #include "cube.h"
 
-VAR(showclips, 0, 1, 1);
-VAR(showmodelclipping, 0, 0, 1);
+static VAR(showclips, 0, 1, 1);
+static VAR(showmodelclipping, 0, 0, 1);
 
 vector<entity> ents;
 vector<int> eh_ents; // edithide entities
@@ -12,7 +12,7 @@ const char *entmdlnames[] =
      "pistolclips", "ammobox", "nade", "health", "helmet", "kevlar", "akimbo", "nades", //FIXME
  };
 
- void renderent(entity &e)
+ static void renderent(entity &e)
  {
      /* FIXME: if the item list change, this hack will be messed */
 
@@ -25,7 +25,7 @@ const char *entmdlnames[] =
      rendermodel(mdlname, ANIM_MAPMODEL|ANIM_LOOP|ANIM_DYNALLOC, 0, 0, vec(e.x, e.y, z+S(e.x, e.y)->floor+e.attr1), yaw, 0);
  }
 
-void renderclip(entity &e)
+static void renderclip(entity &e)
 {
     float xradius = max(float(e.attr2), 0.1f), yradius = max(float(e.attr3), 0.1f);
     vec bbmin(e.x - xradius, e.y - yradius, float(S(e.x, e.y)->floor+e.attr1)),
@@ -72,7 +72,7 @@ void rendermapmodels()
     }
 }
 
-void showedithide()
+static void showedithide()
 {
     loopv(eh_ents)
     {
@@ -82,7 +82,7 @@ void showedithide()
 }
 COMMAND(showedithide, "");
 
-void setedithide(char *text) // FIXME: human indexing inside
+static void setedithide(char *text) // FIXME: human indexing inside
 {
     eh_ents.setsize(0);
     if(text && text[0] != '\0')
@@ -104,7 +104,7 @@ void setedithide(char *text) // FIXME: human indexing inside
 }
 COMMAND(setedithide, "c");
 
-void seteditshow(char *just)
+static void seteditshow(char *just)
 {
     eh_ents.setsize(0);
     if(just && just[0] != '\0')
@@ -123,7 +123,7 @@ void seteditshow(char *just)
 }
 COMMAND(seteditshow, "s");
 
-void renderentarrow(const entity &e, const vec &dir, float radius)
+static void renderentarrow(const entity &e, const vec &dir, float radius)
 {
     if(radius <= 0) return;
     float arrowsize = min(radius/8, 0.5f);
@@ -346,10 +346,10 @@ void pickupeffects(int n, playerent *d)
 }
 
 // these functions are called when the client touches the item
-
+// TODO: Lollo fix this extern by #including proper header file
 extern int lastspawn;
 
-void trypickup(int n, playerent *d)
+static void trypickup(int n, playerent *d)
 {
     entity &e = ents[n];
     switch(e.type)
@@ -369,7 +369,7 @@ void trypickup(int n, playerent *d)
     }
 }
 
-void trypickupflag(int flag, playerent *d)
+static void trypickupflag(int flag, playerent *d)
 {
     if(d==player1)
     {
@@ -480,7 +480,7 @@ void setspawn(int i, bool on)
     }
 }
 
-bool selectnextprimary(int num)
+static bool selectnextprimary(int num)
 {
     switch(num)
     {
@@ -500,6 +500,7 @@ bool selectnextprimary(int num)
     }
 }
 
+// TODO: Lollo fix this utter crap
 VARFP(nextprimary, 0, GUN_ASSAULT, NUMGUNS,
 {
     if(!selectnextprimary(nextprimary)) selectnextprimary((nextprimary = GUN_ASSAULT));
@@ -507,7 +508,7 @@ VARFP(nextprimary, 0, GUN_ASSAULT, NUMGUNS,
 
 // flag ent actions done by the local player
 
-int flagdropmillis = 0;
+static int flagdropmillis = 0;
 
 void flagpickup(int fln)
 {
@@ -615,7 +616,7 @@ void flagidle(int flag)
     flaginfos[flag].flagent->spawned = false;
 }
 
-void entstats(void)
+static void entstats(void)
 {
     int entcnt[MAXENTTYPES] = {0}, clipents = 0, spawncnt[5] = {0};
     loopv(ents)
@@ -656,7 +657,7 @@ void entstats(void)
 COMMAND(entstats, "");
 
 vector<int> changedents;
-int lastentsync = 0;
+static int lastentsync = 0;
 
 void syncentchanges(bool force)
 {

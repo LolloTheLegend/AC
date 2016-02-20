@@ -1,7 +1,7 @@
 #ifndef WORLD_H
 #define WORLD_H
 
-#include "entity.h"
+#include <entities.h>
 
 enum                            // block types, order matters!
 {

@@ -11,8 +11,6 @@ extern int sfactor, ssize;              // ssize = 2^sfactor
 extern int cubicsize, mipsize;          // cubicsize = ssize^2
 extern physent *camera1;                // camera representing perspective of player, usually player1
 extern vector<bounceent *> bounceents;
-extern vector<entity> ents;             // map entities
-extern vector<int> eh_ents;             // edithide entities
 extern vec worldpos, camup, camright, camdir; // current target of the crosshair in the world
 extern int interm;
 extern int gamespeed;
@@ -366,14 +364,7 @@ bool requestmasterf(const char *fmt, ...); // for AUTH et al
 // clientgame
 extern void changemap(const char *name);
 //game mode extras
-extern void flagpickup(int fln);
-extern void tryflagdrop(bool manual = false);
-extern void flagreturn(int fln);
-extern void flagscore(int fln);
-extern void flagstolen(int flag, int act);
-extern void flagdropped(int flag, float x, float y, float z);
-extern void flaginbase(int flag);
-extern void flagidle(int flag);
+
 extern void arenarespawn();
 extern void serveropcommand(int cmd, int arg1);
 
@@ -619,17 +610,6 @@ struct traceresult_s
 };
 void TraceLine(vec from, vec to, dynent *pTracer, bool CheckPlayers, traceresult_s *tr, bool SkipTags=false);
 extern int burstshotssettings[NUMGUNS];
-
-// entities
-extern void spawnallitems();
-extern void pickupeffects(int n, playerent *d);
-extern void renderentities();
-extern void rendermapmodels();
-extern void resetspawns(int type = -1);
-extern void setspawn(int i, bool on);
-extern void checkitems(playerent *d);
-extern vector<int> changedents;
-extern void syncentchanges(bool force = false);
 
 // rndmap
 extern void perlinarea(block &b, int scale, int seed, int psize);

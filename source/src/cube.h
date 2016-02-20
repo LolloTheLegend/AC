@@ -11,7 +11,7 @@
 #include "protocol.h"
 #include "audiomanager.h"
 #include "weapon.h"
-#include "entity.h"
+#include <entities.h>
 #include "world.h"
 #include "i18n.h"
 #include "command.h"

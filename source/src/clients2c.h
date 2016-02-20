@@ -8,8 +8,8 @@
 #ifndef SOURCE_SRC_CLIENTS2C_H_
 #define SOURCE_SRC_CLIENTS2C_H_
 
+#include <entities.h>
 #include "tools.h"
-#include "entity.h"
 
 struct packetqueue
 {

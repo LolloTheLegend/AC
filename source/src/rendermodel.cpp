@@ -523,7 +523,6 @@ void preload_entmodels()
 {
      string buf;
 
-     extern const char *entmdlnames[];
      loopi(I_AKIMBO-I_CLIPS+1)
      {
          strcpy(buf, "pickups/");
