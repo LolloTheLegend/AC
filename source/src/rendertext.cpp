@@ -35,7 +35,6 @@ void newfont(char *name, char *tex, int *defaultw, int *defaulth, int *offsetx, 
     fontdef = f;
 }
 
-extern GLenum texformat(int bpp);
 
 void fontchar(int *x, int *y, int *w, int *h)
 {

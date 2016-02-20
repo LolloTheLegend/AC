@@ -62,17 +62,18 @@ void scaletexture(uchar *src, uint sw, uint sh, uint bpp, uchar *dst, uint dw, u
 
 Texture *notexture = NULL, *noworldtexture = NULL;
 
-hashtable<char *, Texture> textures;
+static hashtable<char *, Texture> textures;
 
 VAR(hwtexsize, 1, 0, 0);
 VAR(hwmaxaniso, 1, 0, 0);
+// TODO: Lollo fix these VARFP utter crap
 VARFP(maxtexsize, 0, 0, 1<<12, initwarning("texture quality", INIT_LOAD));
 VARFP(texreduce, -1, 0, 3, initwarning("texture quality", INIT_LOAD));
 VARFP(trilinear, 0, 1, 1, initwarning("texture filtering", INIT_LOAD));
 VARFP(bilinear, 0, 1, 1, initwarning("texture filtering", INIT_LOAD));
 VARFP(aniso, 0, 0, 16, initwarning("texture filtering", INIT_LOAD));
 
-int formatsize(GLenum format)
+static int formatsize(GLenum format)
 {
     switch(format)
     {
@@ -85,7 +86,7 @@ int formatsize(GLenum format)
     }
 }
 
-void resizetexture(int w, int h, bool mipmap, bool canreduce, GLenum target, int &tw, int &th)
+static void resizetexture(int w, int h, bool mipmap, bool canreduce, GLenum target, int &tw, int &th)
 {
     int hwlimit = hwtexsize,
         sizelimit = mipmap && maxtexsize ? min(maxtexsize, hwlimit) : hwlimit;
@@ -119,7 +120,7 @@ void resizetexture(int w, int h, bool mipmap, bool canreduce, GLenum target, int
     }
 }
 
-void uploadtexture(GLenum target, GLenum internal, int tw, int th, GLenum format, GLenum type, void *pixels, int pw, int ph, bool mipmap)
+static void uploadtexture(GLenum target, GLenum internal, int tw, int th, GLenum format, GLenum type, void *pixels, int pw, int ph, bool mipmap)
 {
     int bpp = formatsize(format);
     uchar *buf = NULL;
@@ -210,7 +211,7 @@ SDL_Surface *forcergbasurface(SDL_Surface *os)
     return ns;
 }
 
-bool checkgrayscale(SDL_Surface *s)
+static bool checkgrayscale(SDL_Surface *s)
 {
     // gray scale images have 256 levels, no colorkey, and the palette is a ramp
     if(s->format->palette)
@@ -222,7 +223,7 @@ bool checkgrayscale(SDL_Surface *s)
     return true;
 }
 
-int fixcl(SDL_Surface *s, bool check = true, Uint8 value = 0, Uint8 mlimit = 255)
+static int fixcl(SDL_Surface *s, bool check = true, Uint8 value = 0, Uint8 mlimit = 255)
 {
     Uint32 pixel = 0;
     int bpp = s->format->BytesPerPixel;
@@ -285,7 +286,7 @@ int fixcl(SDL_Surface *s, bool check = true, Uint8 value = 0, Uint8 mlimit = 255
     return F/N;
 }
 
-SDL_Surface *fixsurfaceformat(SDL_Surface *s)
+static SDL_Surface *fixsurfaceformat(SDL_Surface *s)
 {
     if(!s) return NULL;
     if(!s->pixels || min(s->w, s->h) <= 0 || s->format->BytesPerPixel <= 0)
@@ -323,7 +324,7 @@ GLenum texformat(int bpp)
     }
 }
 
-SDL_Surface *texdecal(SDL_Surface *s)
+static SDL_Surface *texdecal(SDL_Surface *s)
 {
     SDL_Surface *m = SDL_CreateRGBSurface(SDL_SWSURFACE, s->w, s->h, 16, 0, 0, 0, 0);
     if(!m) fatal("create surface");
@@ -338,7 +339,7 @@ SDL_Surface *texdecal(SDL_Surface *s)
     return m;
 }
 
-void scalesurface(SDL_Surface *s, float scale)
+static void scalesurface(SDL_Surface *s, float scale)
 {
     uint dw = s->w*scale, dh = s->h*scale;
     uchar *buf = new uchar[dw*dh*s->format->BytesPerPixel];
@@ -351,10 +352,11 @@ void scalesurface(SDL_Surface *s, float scale)
 
 bool silent_texture_load = false;
 
+// TODO: Lollo fix this utter crap
 VARFP(hirestextures, 0, 1, 1, initwarning("texture resolution", INIT_LOAD));
 bool uniformtexres = !hirestextures;
 
-GLuint loadsurface(const char *texname, int &xs, int &ys, int &bpp, int clamp = 0, bool mipmap = true, bool canreduce = false, float scale = 1.0f, bool trydl = false)
+static GLuint loadsurface(const char *texname, int &xs, int &ys, int &bpp, int clamp = 0, bool mipmap = true, bool canreduce = false, float scale = 1.0f, bool trydl = false)
 {
     const char *file = texname;
     if(texname[0]=='<')
@@ -486,11 +488,11 @@ struct Slot
     bool loaded;
 };
 
-vector<Slot> slots;
+static vector<Slot> slots;
 
-void texturereset() { if(execcontext==IEXC_MAPCFG) slots.setsize(0); }
+static void texturereset() { if(execcontext==IEXC_MAPCFG) slots.setsize(0); }
 
-void texture(float *scale, char *name)
+static void texture(float *scale, char *name)
 {
     Slot &s = slots.add();
     copystring(s.name, name);
@@ -554,7 +556,7 @@ void reloadtextures()
     enumerate(textures, Texture, t, reloadtexture(t));
 }
 
-Texture *sky[6] = {NULL, NULL, NULL, NULL, NULL, NULL};
+static Texture *sky[6] = {NULL, NULL, NULL, NULL, NULL, NULL};
 static string skybox;
 
 void loadsky(char *basename, bool reload)
@@ -576,7 +578,7 @@ void loadsky(char *basename, bool reload)
 }
 
 COMMANDF(loadsky, "s", (char *name) { loadsky(name, false); intret(0); });
-void loadnotexture(char *c)
+static void loadnotexture(char *c)
 {
     noworldtexture = notexture; // reset to default
     if(c[0])
@@ -588,7 +590,7 @@ void loadnotexture(char *c)
 }
 COMMAND(loadnotexture, "s");
 
-void draw_envbox_face(float s0, float t0, float x0, float y0, float z0,
+static void draw_envbox_face(float s0, float t0, float x0, float y0, float z0,
                       float s1, float t1, float x1, float y1, float z1,
                       float s2, float t2, float x2, float y2, float z2,
                       float s3, float t3, float x3, float y3, float z3,
@@ -687,7 +689,7 @@ struct tmu
 
 #define MAXTMUS 4
 
-tmu tmus[MAXTMUS] =
+static tmu tmus[MAXTMUS] =
 {
     INVALIDTMU,
     INVALIDTMU,
@@ -697,7 +699,7 @@ tmu tmus[MAXTMUS] =
 
 VAR(maxtmus, 1, 0, 0);
 
-void parsetmufunc(tmufunc &f, const char *s)
+static void parsetmufunc(tmufunc &f, const char *s)
 {
     int arg = -1;
     while(*s) switch(tolower(*s++))
@@ -719,7 +721,7 @@ void parsetmufunc(tmufunc &f, const char *s)
     }
 }
 
-void committmufunc(bool rgb, tmufunc &dst, tmufunc &src)
+static void committmufunc(bool rgb, tmufunc &dst, tmufunc &src)
 {
     if(dst.combine!=src.combine) glTexEnvi(GL_TEXTURE_ENV, rgb ? GL_COMBINE_RGB_ARB : GL_COMBINE_ALPHA_ARB, src.combine);
     loopi(3)
@@ -730,7 +732,7 @@ void committmufunc(bool rgb, tmufunc &dst, tmufunc &src)
     if(dst.scale!=src.scale) glTexEnvi(GL_TEXTURE_ENV, rgb ? GL_RGB_SCALE_ARB : GL_ALPHA_SCALE, src.scale);
 }
 
-void committmu(int n, tmu &f)
+static void committmu(int n, tmu &f)
 {
     if(n>=maxtmus) return;
     if(tmus[n].mode!=f.mode) glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, f.mode);
@@ -832,9 +834,9 @@ void blitsurface(SDL_Surface *dst, SDL_Surface *src, int x, int y)
     }
 }
 
-Texture *e_wall = NULL, *e_floor = NULL, *e_ceil = NULL;
+static Texture *e_wall = NULL, *e_floor = NULL, *e_ceil = NULL;
 
-void guidetoggle()
+static void guidetoggle()
 {
     if(player1->state == CS_EDITING)
     {

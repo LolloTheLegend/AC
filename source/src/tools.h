@@ -111,7 +111,7 @@ typedef char string[MAXSTRLEN];
 inline void vformatstring(char *d, const char *fmt, va_list v, int len = MAXSTRLEN) { _vsnprintf(d, len, fmt, v); d[len-1] = 0; }
 inline char *copystring(char *d, const char *s, size_t len = MAXSTRLEN) { strncpy(d, s, len); d[len-1] = 0; return d; }
 inline char *concatstring(char *d, const char *s, size_t len = MAXSTRLEN) { size_t used = strlen(d); return used < len ? copystring(d+used, s, len-used) : d; }
-extern char *concatformatstring(char *d, const char *s, ...);
+char *concatformatstring(char *d, const char *s, ...);
 
 struct stringformatter
 {
@@ -140,7 +140,7 @@ inline char *strcaps(const char *s, bool on)
     return r;
 }
 
-inline bool issimilar (char s, char d)
+static inline bool issimilar (char s, char d)
 {
     s = tolower(s); d = tolower(d);
     if ( s == d ) return true;
@@ -159,7 +159,7 @@ inline bool issimilar (char s, char d)
 }
 
 #define MAXMAPNAMELEN 64
-inline bool validmapname(const char *s)
+static inline bool validmapname(const char *s)
 {
     int len = strlen(s);
     if(len > MAXMAPNAMELEN) return false;
@@ -187,7 +187,7 @@ inline bool validmapname(const char *s)
     return true;
 }
 
-inline bool findpattern (char *s, char *d) // returns true if there is more than 80% of similarity
+static inline bool findpattern (char *s, char *d) // returns true if there is more than 80% of similarity
 {
     int len, hit = 0;
     if (!d || (len = strlen(d)) < 1) return false;
@@ -823,14 +823,14 @@ struct stopwatch
 };
 #endif
 
-inline char *newstring(size_t l)                { return new char[l+1]; }
-inline char *newstring(const char *s, size_t l) { return copystring(newstring(l), s, l+1); }
-inline char *newstring(const char *s)           { return newstring(s, strlen(s)); }
-inline char *newstringbuf()                     { return newstring(MAXSTRLEN-1); }
-inline char *newstringbuf(const char *s)        { return newstring(s, MAXSTRLEN-1); }
+static inline char *newstring(size_t l)                { return new char[l+1]; }
+static inline char *newstring(const char *s, size_t l) { return copystring(newstring(l), s, l+1); }
+static inline char *newstring(const char *s)           { return newstring(s, strlen(s)); }
+static inline char *newstringbuf()                     { return newstring(MAXSTRLEN-1); }
+static inline char *newstringbuf(const char *s)        { return newstring(s, MAXSTRLEN-1); }
 
 #ifndef STANDALONE
-inline const char *_gettext(const char *msgid)
+static inline const char *_gettext(const char *msgid)
 {
     if(msgid && msgid[0] != '\0')
         return gettext(msgid);
@@ -841,7 +841,7 @@ inline const char *_gettext(const char *msgid)
 
 #define _(s) _gettext(s)
 
-const int islittleendian = 1;
+static const int islittleendian = 1;
 #ifdef SDL_BYTEORDER
 #define endianswap16 SDL_Swap16
 #define endianswap32 SDL_Swap32
@@ -919,11 +919,14 @@ struct stream
 #endif
 };
 
-extern const char *timestring(bool local = false, const char *fmt = NULL);
-extern const char *asctime();
-extern const char *numtime();
-extern void transformoldentities(int mapversion, uchar &enttype);
-extern int fixmapheadersize(int version, int headersize);
+
+
+// TODO: Fix this utter crap extern functions that are not needed when refactoring will be completed
+const char *timestring(bool local = false, const char *fmt = NULL);
+const char *asctime();
+const char *numtime();
+void transformoldentities(int mapversion, uchar &enttype);
+int fixmapheadersize(int version, int headersize);
 extern char *path(char *s);
 extern char *path(const char *s, bool copy);
 extern char *unixpath(char *s);
@@ -949,25 +952,25 @@ extern int listzipfiles(const char *dir, const char *ext, vector<char *> &files)
 extern bool delfile(const char *path);
 extern bool addzip(const char *name, const char *mount = NULL, const char *strip = NULL, bool extract = false, int type = -1);
 extern bool removezip(const char *name);
-extern struct mapstats *loadmapstats(const char *filename, bool getlayout);
-extern bool cmpb(void *b, int n, enet_uint32 c);
-extern bool cmpf(char *fn, enet_uint32 c);
-extern enet_uint32 adler(unsigned char *data, size_t len);
+struct mapstats *loadmapstats(const char *filename, bool getlayout);
+bool cmpb(void *b, int n, enet_uint32 c);
+bool cmpf(char *fn, enet_uint32 c);
+enet_uint32 adler(unsigned char *data, size_t len);
 extern void endianswap(void *, int, int);
-extern bool isbigendian();
-extern void strtoupper(char *t, const char *s = NULL);
+bool isbigendian();
+void strtoupper(char *t, const char *s = NULL);
 extern void seedMT(uint seed);
 extern uint randomMT(void);
 
 struct iprange { enet_uint32 lr, ur; };
-extern const char *atoip(const char *s, enet_uint32 *ip);
-extern const char *atoipr(const char *s, iprange *ir);
-extern const char *iptoa(const enet_uint32 ip);
-extern const char *iprtoa(const struct iprange &ipr);
-extern int cmpiprange(const struct iprange *a, const struct iprange *b);
-extern int cmpipmatch(const struct iprange *a, const struct iprange *b);
-extern int cvecprintf(vector<char> &v, const char *s, ...);
-extern const char *hiddenpwd(const char *pwd, int showchars = 0);
+const char *atoip(const char *s, enet_uint32 *ip);
+const char *atoipr(const char *s, iprange *ir);
+const char *iptoa(const enet_uint32 ip);
+const char *iprtoa(const struct iprange &ipr);
+int cmpiprange(const struct iprange *a, const struct iprange *b);
+int cmpipmatch(const struct iprange *a, const struct iprange *b);
+int cvecprintf(vector<char> &v, const char *s, ...);
+const char *hiddenpwd(const char *pwd, int showchars = 0);
 
 #if defined(WIN32) && !defined(_DEBUG) && !defined(__GNUC__)
 extern void stackdumper(unsigned int type, EXCEPTION_POINTERS *ep);

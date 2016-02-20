@@ -636,8 +636,6 @@ void resetgl()
 
     extern void cleanupparticles();
     extern void cleanupmodels();
-    extern void cleanuptextures();
-    extern void cleanuptmus();
     extern void cleanupgl();
     cleanupparticles();
     cleanupmodels();

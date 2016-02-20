@@ -1,14 +1,25 @@
 #ifndef VERTMODEL_H
 #define VERTMODEL_H
 
-VARP(dynshadowsize, 4, 5, 8);
-VARP(aadynshadow, 0, 2, 3);
-VARP(saveshadows, 0, 1, 1);
+#include "tools.h"
+#include "command.h"
+#include "geom.h"
+#include "model.h"
+#include "modelcache.h"
+#include "tristrip.h"
+#include "texture.h"
+#include "clientgame.h"
+#include "console.h"
+#include "world.h"
 
-VARP(dynshadowquad, 0, 0, 1);
+static VARP(dynshadowsize, 4, 5, 8);
+static VARP(aadynshadow, 0, 2, 3);
+static VARP(saveshadows, 0, 1, 1);
 
-VAR(shadowyaw, 0, 45, 360);
-vec shadowdir(0, 0, -1), shadowpos(0, 0, 0);
+static VARP(dynshadowquad, 0, 0, 1);
+
+static VAR(shadowyaw, 0, 45, 360);
+static vec shadowdir(0, 0, -1), shadowpos(0, 0, 0);
 
 const int dbgstenc = 0;
 const int dbgvlight = 0;

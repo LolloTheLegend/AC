@@ -96,7 +96,9 @@ set(
         ${ASS_CUBE_SRCS_PATH}/bot/bot_waypoint.cpp
         ${ASS_CUBE_SRCS_PATH}/bot/ac_bot.cpp
         ${ASS_CUBE_SRCS_PATH}/bot/ac_bot_ai.cpp
+        
         ${ASS_CUBE_SRCS_PATH}/jpegenc.cpp
+        ${ASS_CUBE_SRCS_PATH}/geom.cpp
         
         ${ASS_CUBE_SRCS_PATH}/dummy.cpp
 )

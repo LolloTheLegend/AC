@@ -664,6 +664,33 @@ source/src/entities.cpp.s:
 	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/entities.cpp.s
 .PHONY : source/src/entities.cpp.s
 
+source/src/geom.o: source/src/geom.cpp.o
+
+.PHONY : source/src/geom.o
+
+# target to build an object file
+source/src/geom.cpp.o:
+	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/geom.cpp.o
+.PHONY : source/src/geom.cpp.o
+
+source/src/geom.i: source/src/geom.cpp.i
+
+.PHONY : source/src/geom.i
+
+# target to preprocess a source file
+source/src/geom.cpp.i:
+	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/geom.cpp.i
+.PHONY : source/src/geom.cpp.i
+
+source/src/geom.s: source/src/geom.cpp.s
+
+.PHONY : source/src/geom.s
+
+# target to generate assembly for a file
+source/src/geom.cpp.s:
+	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/source/src/geom.cpp.s
+.PHONY : source/src/geom.cpp.s
+
 source/src/i18n.o: source/src/i18n.cpp.o
 
 .PHONY : source/src/i18n.o
@@ -1751,6 +1778,9 @@ help:
 	@echo "... source/src/entities.o"
 	@echo "... source/src/entities.i"
 	@echo "... source/src/entities.s"
+	@echo "... source/src/geom.o"
+	@echo "... source/src/geom.i"
+	@echo "... source/src/geom.s"
 	@echo "... source/src/i18n.o"
 	@echo "... source/src/i18n.i"
 	@echo "... source/src/i18n.s"
