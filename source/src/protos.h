@@ -192,13 +192,6 @@ static inline Texture *lookupworldtexture(int tex, bool trydl = true)
 
 struct zone { int x1, x2, y1, y2, color; }; // zones (drawn on the minimap)
 
-// water
-extern void setwatercolor(const char *r = "", const char *g = "", const char *b = "", const char *a = "");
-extern void calcwaterscissor();
-extern void addwaterquad(int x, int y, int size);
-extern int renderwater(float hf, GLuint reflecttex, GLuint refracttex);
-extern void resetwater();
-
 // client
 extern void neterr(const char *s);
 extern void changeteam(int team, bool respawn = true); // deprecated?

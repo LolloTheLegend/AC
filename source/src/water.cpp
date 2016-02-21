@@ -3,7 +3,8 @@
 int wx1, wy1, wx2, wy2;
 float wsx1, wsy1, wsx2, wsy2;
 
-VARP(watersubdiv, 1, 4, 64);
+static VARP(watersubdiv, 1, 4, 64);
+// TODO: Lollo fix this utter crap extern fucking asshole bitch
 VARF(waterlevel, -128, -128, 127, if(!noteditmode("waterlevel")) { hdr.waterlevel = waterlevel; unsavededits++; });
 
 void setwatercolor(const char *r, const char *g, const char *b, const char *a)
@@ -26,7 +27,7 @@ void setwatercolor(const char *r, const char *g, const char *b, const char *a)
 }
 
 COMMANDN(watercolour, setwatercolor, "ssss");
-FVAR(waveheight, 0, 0.3f, 1.0f);
+static FVAR(waveheight, 0, 0.3f, 1.0f);
 
 // renders water for bounding rect area that contains water... simple but very inefficient
 
@@ -36,7 +37,7 @@ FVAR(waveheight, 0, 0.3f, 1.0f);
         varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT); \
         defbody; \
     } \
-    inline void vertw(float v1, float v2, float v3, float t) \
+    static inline void vertw(float v1, float v2, float v3, float t) \
     { \
         float angle = v1*v2*0.1f/(2*M_PI) + t; \
         float s = angle - int(angle) - 0.5f; \
@@ -102,7 +103,7 @@ extern int nquads;
         nquads += varray::end()/4; \
     }
 
-void setprojtexmatrix()
+static void setprojtexmatrix()
 {
     glmatrixf projtex = mvpmatrix;
     projtex.projective();
@@ -111,7 +112,7 @@ void setprojtexmatrix()
     glLoadMatrixf(projtex.v);
 }
 
-void setupmultitexrefract(GLuint reflecttex, GLuint refracttex)
+static void setupmultitexrefract(GLuint reflecttex, GLuint refracttex)
 {
     setuptmu(0, "K , T @ Ka");
 
@@ -131,7 +132,7 @@ void setupmultitexrefract(GLuint reflecttex, GLuint refracttex)
     glActiveTexture_(GL_TEXTURE0_ARB);
 }
 
-void setupmultitexreflect(GLuint reflecttex)
+static void setupmultitexreflect(GLuint reflecttex)
 {
     setuptmu(0, "T , K @ Ca", "Ka * P~a");
 
@@ -142,7 +143,7 @@ void setupmultitexreflect(GLuint reflecttex)
     setprojtexmatrix();
 }
 
-void cleanupmultitex(GLuint reflecttex, GLuint refracttex)
+static void cleanupmultitex(GLuint reflecttex, GLuint refracttex)
 {
     resettmu(0);
     glLoadIdentity();
