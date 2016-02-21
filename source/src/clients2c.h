@@ -38,5 +38,6 @@ extern medalsst a_medals[END_MDS];
 bool good_map();
 void servertoclient(int chan, uchar *buf, int len, bool demo = false);
 void localservertoclient(int chan, uchar *buf, int len, bool demo = false);
+void neterr(const char *s);
 
 #endif /* SOURCE_SRC_CLIENTS2C_H_ */

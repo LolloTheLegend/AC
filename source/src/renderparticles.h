@@ -4,6 +4,43 @@
 #include "geom.h"
 #include "entities.h"
 
+enum
+{
+    PT_PART = 0,
+    PT_FIREBALL,
+    PT_SHOTLINE,
+    PT_DECAL,
+    PT_BULLETHOLE,
+    PT_BLOOD,
+    PT_STAIN,
+    PT_FLASH,
+    PT_HUDFLASH
+};
+
+enum
+{
+    PART_SPARK = 0,
+    PART_SMOKE,
+    PART_ECLOSEST,
+    PART_BLOOD,
+    PART_DEMOTRACK,
+    PART_FIREBALL,
+    PART_SHOTLINE,
+    PART_BULLETHOLE,
+    PART_BLOODSTAIN,
+    PART_SCORCH,
+    PART_HUDMUZZLEFLASH,
+    PART_MUZZLEFLASH,
+    PART_ELIGHT,
+    PART_ESPAWN,
+    PART_EAMMO,
+    PART_EPICKUP,
+    PART_EMODEL,
+    PART_ECARROT,
+    PART_ELADDER,
+    PART_EFLAG
+};
+
 void particleinit();
 void particlereset();
 void cleanupparticles();

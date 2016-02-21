@@ -54,5 +54,7 @@ void inittmus();
 void cleanuptmus();
 void blitsurface(SDL_Surface *dst, SDL_Surface *src, int x, int y);
 
+static inline Texture *lookupworldtexture(int tex, bool trydl = true)
+{ return lookuptexture(tex, noworldtexture, trydl); }
 
 #endif /* SOURCE_SRC_TEXTURE_H_ */

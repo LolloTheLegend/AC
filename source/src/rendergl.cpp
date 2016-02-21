@@ -3,6 +3,9 @@
 #include "cube.h"
 #include "bot/bot.h"
 
+struct zone { int x1, x2, y1, y2, color; }; // zones (drawn on the minimap)
+
+
 bool hasTE = false, hasMT = false, hasMDA = false, hasDRE = false, hasstencil = false, hasST2 = false, hasSTW = false, hasSTS = false, hasAF;
 
 // GL_ARB_multitexture

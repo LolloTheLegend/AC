@@ -3,6 +3,8 @@
 #include "renderhud.h"
 #include "cube.h"
 
+
+
 static void drawicon(Texture *tex, float x, float y, float s, int col, int row, float ts)
 {
     if(tex && tex->xs == tex->ys) quad(tex->id, x, y, s, ts*col, ts*row, ts);

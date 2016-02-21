@@ -913,6 +913,8 @@ int cmpiprange(const struct iprange *a, const struct iprange *b);
 int cmpipmatch(const struct iprange *a, const struct iprange *b);
 int cvecprintf(vector<char> &v, const char *s, ...);
 const char *hiddenpwd(const char *pwd, int showchars = 0);
+struct mapdim;
+extern mapdim mapdims;
 
 #if defined(WIN32) && !defined(_DEBUG) && !defined(__GNUC__)
 extern void stackdumper(unsigned int type, EXCEPTION_POINTERS *ep);

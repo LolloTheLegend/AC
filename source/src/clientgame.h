@@ -81,6 +81,7 @@ votedisplayinfo *newvotedisplayinfo(playerent *owner, int type, const char *arg1
 void callvote(int type, const char *arg1 = NULL, const char *arg2 = NULL, const char *arg3 = NULL);
 int vote(int v);
 void displayvote(votedisplayinfo *v);
+void voteresult(int v);
 void callvotesuc();
 void callvoteerr(int e);
 void votecount(int v);

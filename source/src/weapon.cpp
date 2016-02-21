@@ -113,9 +113,14 @@ struct weaponmove
         }
     }
 };
-
 vec weaponmove::swaydir(0, 0, 0);
 int weaponmove::lastsway = 0, weaponmove::swaymillis = 0;
+
+struct sgray {
+    int ds; // damage flag: outer, medium, center: SGSEGDMG_*
+    vec rv; // ray vector
+};
+
 
 void preload_hudguns()
 {

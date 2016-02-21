@@ -105,6 +105,7 @@ enum { IEXC_CORE = 0, IEXC_CFG, IEXC_PROMPT, IEXC_MAPCFG, IEXC_MDLCFG, IEXC_NUM 
 #define ATOI(s) strtol(s, NULL, 0)      // supports hexadecimal numbers
 
 extern int execcontext;
+extern bool per_idents, neverpersist;
 
 
 void push(const char *name, const char *action);

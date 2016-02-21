@@ -8,6 +8,7 @@
 // TODO: Lollo fix this
 struct color;
 
+extern bool hasTE, hasMT, hasMDA, hasDRE, hasstencil, hasST2, hasSTW, hasSTS, hasAF;
 extern int ati_mda_bug;
 extern float scopesensfunc;
 extern float fovy, aspect;

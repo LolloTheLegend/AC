@@ -202,6 +202,8 @@ struct knife : weapon
     int flashtime() const;
 };
 
+extern vector<bounceent *> bounceents;
+
 void shoot(playerent *d, vec &to);
 void setscope(bool activate);
 void setburst(bool activate);

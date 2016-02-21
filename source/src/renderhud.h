@@ -10,6 +10,17 @@ struct color;
 
 enum
 {
+    HUDMSG_INFO = 0,
+    HUDMSG_TIMER,
+    HUDMSG_MIPSTATS,
+    HUDMSG_EDITFOCUS,
+
+    HUDMSG_TYPE = 0xFF,
+    HUDMSG_OVERWRITE = 1<<8
+};
+
+enum
+{
     CROSSHAIR_DEFAULT = 0,
     CROSSHAIR_TEAMMATE,
     CROSSHAIR_SCOPE,

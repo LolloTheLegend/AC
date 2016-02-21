@@ -1,7 +1,7 @@
 #ifndef WORLD_H
 #define WORLD_H
 
-#include <entities.h>
+#include "entities.h"
 
 enum                            // block types, order matters!
 {
@@ -111,7 +111,9 @@ struct block { int x, y, xs, ys, h; short p[5]; };
 
 struct vertex { float u, v, x, y, z; uchar r, g, b, a; };
 
+extern header hdr;
 extern sqr *world, *wmip[];             // map data, the mips are sequential 2D arrays in memory
+extern int sfactor, ssize, cubicsize, mipsize;
 extern hashtable<char *, enet_uint32> mapinfo;
 extern hashtable<char *, enet_uint32> &resdata;
 

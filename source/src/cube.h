@@ -13,23 +13,10 @@
 #include "protocol.h"
 #include "audiomanager.h"
 #include "weapon.h"
-#include <entities.h>
+#include "entities.h"
 #include "world.h"
 #include "i18n.h"
 #include "command.h"
-
-#ifndef STANDALONE
- #include "varray.h"
- #include "console.h"
- enum
- {
-   SDL_AC_BUTTON_WHEELDOWN = -5,
-   SDL_AC_BUTTON_WHEELUP = -4,
-   SDL_AC_BUTTON_RIGHT = -3,
-   SDL_AC_BUTTON_MIDDLE = -2,
-   SDL_AC_BUTTON_LEFT = -1
- };
-#endif
 
 #include "console.h"
 #include "docs.h"
@@ -58,7 +45,8 @@
 #include "worldrender.h"
 #include "server.h"
 #include "serverbrowser.h"
-#include "protos.h"
+#include "main.h"
+#include "log.h"
 
 #endif
 
