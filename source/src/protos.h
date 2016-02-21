@@ -209,10 +209,6 @@ extern void serveropcommand(int cmd, int arg1);
 extern void displayvote(votedisplayinfo *v);
 extern void voteresult(int v);
 
-// worldrender
-extern void render_world(float vx, float vy, float vh, float changelod, int yaw, int pitch, float fov, float fovy, int w, int h);
-extern int lod_factor();
-
 // main
 extern SDL_Surface *screen;
 extern int colorbits, depthbits, stencilbits;

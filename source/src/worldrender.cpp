@@ -3,7 +3,7 @@
 
 #include "cube.h"
 
-void render_wall(sqr *o, sqr *s, int x1, int y1, int x2, int y2, int mip, sqr *d1, sqr *d2, bool topleft, int dir)
+static void render_wall(sqr *o, sqr *s, int x1, int y1, int x2, int y2, int mip, sqr *d1, sqr *d2, bool topleft, int dir)
 {
     if(minimap) return;
     if(SOLID(o) || o->type==SEMISOLID)
@@ -57,24 +57,24 @@ void render_wall(sqr *o, sqr *s, int x1, int y1, int x2, int y2, int mip, sqr *d
     }
 }
 
-const int MAX_MIP = 5;   // 32x32 unit blocks
-const int MIN_LOD = 2;
-const int LOW_LOD = 25;
-const int MAX_LOD = 250;
+static const int MAX_MIP = 5;   // 32x32 unit blocks
+static const int MIN_LOD = 2;
+static const int LOW_LOD = 25;
+static const int MAX_LOD = 250;
 
-int lod = 40, lodtop, lodbot, lodleft, lodright;
-int min_lod;
+static int lod = 40, lodtop, lodbot, lodleft, lodright;
+static int min_lod;
 
 int lod_factor() { return lod; }
 
-VARP(minlod, LOW_LOD, 60, MAX_LOD);
+static VARP(minlod, LOW_LOD, 60, MAX_LOD);
 
-int stats[LARGEST_FACTOR];
+static int stats[LARGEST_FACTOR];
 
 // detect those cases where a higher mip solid has a visible wall next to lower mip cubes
 // (used for wall rendering below)
 
-bool issemi(int mip, int x, int y, int x1, int y1, int x2, int y2)
+static bool issemi(int mip, int x, int y, int x1, int y1, int x2, int y2)
 {
     if(!(mip--)) return true;
     sqr *w = wmip[mip];
@@ -98,13 +98,13 @@ bool issemi(int mip, int x, int y, int x1, int y1, int x2, int y2)
     return false;
 }
 
-bool render_floor, render_ceil;
+static bool render_floor, render_ceil;
 
 // the core recursive function, renders a rect of cubes at a certain mip level from a viewer perspective
 // call itself for lower mip levels, on most modern machines however this function will use the higher
 // mip levels only for perfect mips.
 
-void render_seg_new(float vx, float vy, float vh, int mip, int x, int y, int xs, int ys)
+static void render_seg_new(float vx, float vy, float vh, int mip, int x, int y, int xs, int ys)
 {
     sqr *w = wmip[mip];
     int mfactor = sfactor - mip;
@@ -280,7 +280,7 @@ void render_seg_new(float vx, float vy, float vh, int mip, int x, int y, int xs,
     }}}
 }
 
-void distlod(int &low, int &high, int angle, float widef)
+static void distlod(int &low, int &high, int angle, float widef)
 {
     float f = 90.0f/lod/widef;
     low = (int)((90-angle)/f);

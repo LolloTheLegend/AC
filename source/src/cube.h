@@ -55,6 +55,7 @@
 #include "worldio.h"
 #include "worldlight.h"
 #include "worldocull.h"
+#include "worldrender.h"
 #include "protos.h"
 
 #endif
