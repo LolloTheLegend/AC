@@ -7,8 +7,7 @@ extern bool firstrun, inmainloop;
 extern int gamespeed;
 extern int screenshottype;
 
-void keyrepeat(bool on);
-bool interceptkey(int sym);
-
+void keyrepeat ( bool on );
+bool interceptkey ( int sym );
 
 #endif /* MAIN_H_ */

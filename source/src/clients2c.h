@@ -13,13 +13,13 @@
 
 struct packetqueue
 {
-    ringbuf<ENetPacket *, 8> packets;
+	ringbuf<ENetPacket *, 8> packets;
 
-    packetqueue();
-    ~packetqueue();
-    void queue(ENetPacket *p);
-    bool flushtolog(const char *logfile);
-    void clear();
+	packetqueue ();
+	~packetqueue ();
+	void queue ( ENetPacket *p );
+	bool flushtolog ( const char *logfile );
+	void clear ();
 };
 
 extern void* downloaddemomenu;
@@ -35,9 +35,9 @@ extern int voicecomsounds;
 extern bool medals_arrived;
 extern medalsst a_medals[END_MDS];
 
-bool good_map();
-void servertoclient(int chan, uchar *buf, int len, bool demo = false);
-void localservertoclient(int chan, uchar *buf, int len, bool demo = false);
-void neterr(const char *s);
+bool good_map ();
+void servertoclient ( int chan, uchar *buf, int len, bool demo = false );
+void localservertoclient ( int chan, uchar *buf, int len, bool demo = false );
+void neterr ( const char *s );
 
 #endif /* SOURCE_SRC_CLIENTS2C_H_ */
