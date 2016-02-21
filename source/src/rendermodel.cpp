@@ -1,11 +1,11 @@
 #include "cube.h"
 
-VARP(animationinterpolationtime, 0, 150, 1000);
+static VARP(animationinterpolationtime, 0, 150, 1000);
 
-model *loadingmodel = NULL;
+static model *loadingmodel = NULL;
 
 const int dbgts = 0;
-VAR(tsswap, 0, 1, 1);
+static VAR(tsswap, 0, 1, 1);
 
 struct tristrip
 {
@@ -450,13 +450,13 @@ static VARP(dynshadowquad, 0, 0, 1);
 static VAR(shadowyaw, 0, 45, 360);
 static vec shadowdir(0, 0, -1), shadowpos(0, 0, 0);
 
-const int dbgstenc = 0;
-const int dbgvlight = 0;
+static const int dbgstenc = 0;
+static const int dbgvlight = 0;
 
-VARP(mdldlist, 0, 1, 1);
+static VARP(mdldlist, 0, 1, 1);
 
-vec modelpos;
-float modelyaw, modelpitch;
+static vec modelpos;
+static float modelyaw, modelpitch;
 
 struct vertmodel : model
 {
@@ -1752,6 +1752,7 @@ void *vertmodel::lastvertexarray = NULL, *vertmodel::lasttexcoordarray = NULL, *
 glmatrixf vertmodel::matrixstack[32];
 int vertmodel::matrixpos = 0;
 
+// TODO: Lollo fix this utter crap
 VARF(mdldyncache, 1, 2, 32, vertmodel::dynalloc.resize(mdldyncache<<20));
 VARF(mdlstatcache, 1, 1, 32, vertmodel::statalloc.resize(mdlstatcache<<20));
 
@@ -2037,7 +2038,7 @@ struct md2 : vertmodel
     }
 };
 
-void md2anim(char *anim, int *frame, int *range, float *speed)
+static void md2anim(char *anim, int *frame, int *range, float *speed)
 {
     if(!loadingmd2 || loadingmd2->parts.empty()) { conoutf("not loading an md2"); return; }
     int num = findanim(anim);
@@ -2045,7 +2046,7 @@ void md2anim(char *anim, int *frame, int *range, float *speed)
     loadingmd2->parts.last()->setanim(num, *frame, *range, *speed);
 }
 
-void md2tag(char *name, char *vert1, char *vert2, char *vert3, char *vert4)
+static void md2tag(char *name, char *vert1, char *vert2, char *vert3, char *vert4)
 {
     if(!loadingmd2 || loadingmd2->parts.empty()) { conoutf("not loading an md2"); return; }
     md2::part &mdl = *loadingmd2->parts.last();
@@ -2084,7 +2085,7 @@ void md2tag(char *name, char *vert1, char *vert2, char *vert3, char *vert4)
     if(!mdl.gentag(name, indexes, numverts)) { conoutf("could not generate tag %s", name); return; }
 }
 
-void md2emit(char *tag, int *type, int *arg1, int *arg2)
+static void md2emit(char *tag, int *type, int *arg1, int *arg2)
 {
     if(!loadingmd2 || loadingmd2->parts.empty()) { conoutf("not loading an md2"); return; };
     md2::part &mdl = *loadingmd2->parts.last();
@@ -2097,9 +2098,9 @@ COMMAND(md2emit, "siii");
 
 struct md3;
 
-md3 *loadingmd3 = NULL;
+static md3 *loadingmd3 = NULL;
 
-string md3dir;
+static string md3dir;
 
 struct md3tag
 {
@@ -2349,7 +2350,7 @@ struct md3 : vertmodel
     }
 };
 
-void md3load(char *model)
+static void md3load(char *model)
 {
     if(!loadingmd3) { conoutf("not loading an md3"); return; };
     defformatstring(filename)("%s/%s", md3dir, model);
@@ -2360,7 +2361,7 @@ void md3load(char *model)
     if(!mdl.load(path(filename))) conoutf("could not load %s", filename); // ignore failure
 }
 
-void md3skin(char *objname, char *skin)
+static void md3skin(char *objname, char *skin)
 {
     if(!objname || !skin) return;
     if(!loadingmd3 || loadingmd3->parts.empty()) { conoutf("not loading an md3"); return; };
@@ -2376,7 +2377,7 @@ void md3skin(char *objname, char *skin)
     }
 }
 
-void md3anim(char *anim, int *startframe, int *range, float *speed)
+static void md3anim(char *anim, int *startframe, int *range, float *speed)
 {
     if(!loadingmd3 || loadingmd3->parts.empty()) { conoutf("not loading an md3"); return; };
     int num = findanim(anim);
@@ -2384,14 +2385,14 @@ void md3anim(char *anim, int *startframe, int *range, float *speed)
     loadingmd3->parts.last()->setanim(num, *startframe, *range, *speed);
 }
 
-void md3link(int *parent, int *child, char *tagname)
+static void md3link(int *parent, int *child, char *tagname)
 {
     if(!loadingmd3) { conoutf("not loading an md3"); return; };
     if(!loadingmd3->parts.inrange(*parent) || !loadingmd3->parts.inrange(*child)) { conoutf("no models loaded to link"); return; }
     if(!loadingmd3->parts[*parent]->link(loadingmd3->parts[*child], tagname)) conoutf("could not link model %s", loadingmd3->loadname);
 }
 
-void md3emit(char *tag, int *type, int *arg1, int *arg2)
+static void md3emit(char *tag, int *type, int *arg1, int *arg2)
 {
     if(!loadingmd3 || loadingmd3->parts.empty()) { conoutf("not loading an md3"); return; };
     md3::part &mdl = *loadingmd3->parts.last();
@@ -2406,7 +2407,7 @@ COMMAND(md3emit, "siii");
 
 #define checkmdl if(!loadingmodel) { conoutf("not loading a model"); return; }
 
-void mdlcullface(int *cullface)
+static void mdlcullface(int *cullface)
 {
     checkmdl;
     loadingmodel->cullface = *cullface!=0;
@@ -2414,7 +2415,7 @@ void mdlcullface(int *cullface)
 
 COMMAND(mdlcullface, "i");
 
-void mdlvertexlight(int *vertexlight)
+static void mdlvertexlight(int *vertexlight)
 {
     checkmdl;
     loadingmodel->vertexlight = *vertexlight!=0;
@@ -2422,7 +2423,7 @@ void mdlvertexlight(int *vertexlight)
 
 COMMAND(mdlvertexlight, "i");
 
-void mdltranslucent(int *translucency)
+static void mdltranslucent(int *translucency)
 {
     checkmdl;
     loadingmodel->translucency = *translucency/100.0f;
@@ -2430,7 +2431,7 @@ void mdltranslucent(int *translucency)
 
 COMMAND(mdltranslucent, "i");
 
-void mdlalphatest(int *alphatest)
+static void mdlalphatest(int *alphatest)
 {
     checkmdl;
     loadingmodel->alphatest = *alphatest/100.0f;
@@ -2438,14 +2439,14 @@ void mdlalphatest(int *alphatest)
 
 COMMAND(mdlalphatest, "i");
 
-void mdlalphablend(int *alphablend) //ALX Alpha channel models
+static void mdlalphablend(int *alphablend) //ALX Alpha channel models
 {
     checkmdl;
     loadingmodel->alphablend = *alphablend!=0;
 }
 COMMAND(mdlalphablend, "i");
 
-void mdlscale(int *percent)
+static void mdlscale(int *percent)
 {
     checkmdl;
     float scale = 0.3f;
@@ -2456,7 +2457,7 @@ void mdlscale(int *percent)
 
 COMMAND(mdlscale, "i");
 
-void mdltrans(float *x, float *y, float *z)
+static void mdltrans(float *x, float *y, float *z)
 {
     checkmdl;
     loadingmodel->translate = vec(*x, *y, *z);
@@ -2480,9 +2481,9 @@ void mdlcachelimit(int *limit)
 
 COMMAND(mdlcachelimit, "i");
 
-vector<mapmodelinfo> mapmodels;
+static vector<mapmodelinfo> mapmodels;
 
-void mapmodel(int *rad, int *h, int *zoff, char *snap, char *name)
+static void mapmodel(int *rad, int *h, int *zoff, char *snap, char *name)
 {
     mapmodelinfo &mmi = mapmodels.add();
     mmi.rad = *rad;
@@ -2492,7 +2493,7 @@ void mapmodel(int *rad, int *h, int *zoff, char *snap, char *name)
     formatstring(mmi.name)("mapmodels/%s", name);
 }
 
-void mapmodelreset()
+static void mapmodelreset()
 {
     if(execcontext==IEXC_MAPCFG) mapmodels.shrink(0);
 }
@@ -2502,8 +2503,8 @@ mapmodelinfo &getmminfo(int i) { return mapmodels.inrange(i) ? mapmodels[i] : *(
 COMMAND(mapmodel, "iiiss");
 COMMAND(mapmodelreset, "");
 
-hashtable<const char *, model *> mdllookup;
-hashtable<const char *, char> mdlnotfound;
+static hashtable<const char *, model *> mdllookup;
+static hashtable<const char *, char> mdlnotfound;
 
 model *loadmodel(const char *name, int i, bool trydl)     // load model by name (optional) or from mapmodels[i]
 {
@@ -2557,8 +2558,8 @@ void cleanupmodels()
     enumerate(mdllookup, model *, m, m->cleanup());
 }
 
-VARP(dynshadow, 0, 40, 100);
-VARP(dynshadowdecay, 0, 1000, 3000);
+static VARP(dynshadow, 0, 40, 100);
+static VARP(dynshadowdecay, 0, 1000, 3000);
 
 struct batchedmodel
 {
@@ -2585,7 +2586,7 @@ void startmodelbatches()
     modelattached.setsize(0);
 }
 
-batchedmodel &addbatchedmodel(model *m)
+static batchedmodel &addbatchedmodel(model *m)
 {
     modelbatch *b = NULL;
     if(m->batch>=0 && m->batch<numbatches && batches[m->batch]->m==m) b = batches[m->batch];
@@ -2603,7 +2604,7 @@ batchedmodel &addbatchedmodel(model *m)
     return b->batched.add();
 }
 
-void renderbatchedmodel(model *m, batchedmodel &b)
+static void renderbatchedmodel(model *m, batchedmodel &b)
 {
     modelattach *a = NULL;
     if(b.attached>=0) a = &modelattached[b.attached];
@@ -2648,7 +2649,7 @@ void renderbatchedmodel(model *m, batchedmodel &b)
     }
 }
 
-void renderbatchedmodelshadow(model *m, batchedmodel &b)
+static void renderbatchedmodelshadow(model *m, batchedmodel &b)
 {
     int x = (int)b.o.x, y = (int)b.o.y;
     if(OUTBORD(x, y)) return;
@@ -2749,10 +2750,9 @@ void endmodelbatches(bool flush)
     if(flush) clearmodelbatches();
 }
 
-const int dbgmbatch = 0;
-//VAR(dbgmbatch, 0, 0, 1);
+static const int dbgmbatch = 0;
 
-VARP(popdeadplayers, 0, 0, 1);
+static VARP(popdeadplayers, 0, 0, 1);
 void rendermodel(const char *mdl, int anim, int tex, float rad, const vec &o, float yaw, float pitch, float speed, int basetime, playerent *d, modelattach *a, float scale)
 {
     if(popdeadplayers && d && a)
@@ -3077,13 +3077,13 @@ void renderclient(playerent *d, const char *mdlname, const char *vwepname, int t
     }
 }
 
-VARP(teamdisplaymode, 0, 1, 2);
+static VARP(teamdisplaymode, 0, 1, 2);
 
 #define SKINBASE "packages/models/playermodels"
-VARP(hidecustomskins, 0, 0, 2);
+static VARP(hidecustomskins, 0, 0, 2);
 static vector<char *> playerskinlist;
 
-const char *getclientskin(const char *name, const char *suf)
+static const char *getclientskin(const char *name, const char *suf)
 {
     static string tmp;
     int suflen = (int)strlen(suf), namelen = (int)strlen(name);

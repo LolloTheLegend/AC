@@ -118,14 +118,14 @@ add_executable(
 )
 
 target_include_directories(client PUBLIC source/src source/src/bot ${SDL_INCLUDE_DIR})
-target_compile_options(client PUBLIC -g -O3 -Wall -fomit-frame-pointer -fsigned-char )
+target_compile_options(client PUBLIC -Wall -fomit-frame-pointer -fsigned-char )
 target_compile_definitions(client PUBLIC _GNU_SOURCE=1 _REENTRANT)
 target_link_libraries(client PUBLIC -lenet -lX11 ${SDL_LIBRARY} -lSDL_image -lz -lGL -lopenal -lvorbisfile -lcurl)
 
 
 #set_property (
 #    TARGET client
-#    PROPERTY LINK_FLAGS "-O3 -fomit-frame-pointer -Wall -fsigned-char"
+#    PROPERTY LINK_FLAGS " -fomit-frame-pointer -Wall -fsigned-char"
 #)
 
 

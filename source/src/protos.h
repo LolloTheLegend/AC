@@ -413,22 +413,6 @@ extern void xmapbackup(const char *nickprefix, const char *nick);
 extern void writeallxmaps();
 extern int loadallxmaps();
 
-extern void rendermodel(const char *mdl, int anim, int tex, float rad, const vec &o, float yaw, float pitch, float speed = 0, int basetime = 0, playerent *d = NULL, modelattach *a = NULL, float scale = 1.0f);
-extern void startmodelbatches();
-extern void endmodelbatches(bool flush = true);
-extern void clearmodelbatches();
-extern mapmodelinfo &getmminfo(int i);
-extern int findanim(const char *name);
-extern void loadskin(const char *dir, const char *altdir, Texture *&skin);
-extern model *loadmodel(const char *name, int i = -1, bool trydl = false);
-extern void preload_playermodels();
-extern void preload_entmodels();
-extern void preload_mapmodels(bool trydl = false);
-extern void renderclients();
-extern void renderclient(playerent *d);
-extern void renderclient(playerent *d, const char *mdlname, const char *vwepname, int tex = 0);
-extern void updateclientname(playerent *d);
-
 // Structure for storing traceresults
 struct traceresult_s
 {

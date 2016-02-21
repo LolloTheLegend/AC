@@ -43,6 +43,7 @@
 #include "rendercubes.h"
 #include "rendergl.h"
 #include "renderhud.h"
+#include "rendermodel.h"
 #include "protos.h"                     // external function decls
 
 #endif
