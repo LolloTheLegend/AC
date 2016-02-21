@@ -209,25 +209,6 @@ extern void serveropcommand(int cmd, int arg1);
 extern void displayvote(votedisplayinfo *v);
 extern void voteresult(int v);
 
-// world
-
-// worldlight
-extern int lastcalclight;
-
-extern void fullbrightlight(int level = -1);
-extern void calclight();
-extern void adddynlight(physent *owner, const vec &o, int reach, int expire, int fade, uchar r, uchar g = 0, uchar b = 0);
-extern void dodynlights();
-extern void undodynlights();
-extern void cleardynlights();
-extern void removedynlights(physent *owner);
-extern block *blockcopy(const block &b);
-extern void blockpaste(const block &b, int bx, int by, bool light);
-extern void blockpaste(const block &b);
-extern void freeblockp(block *b);
-extern void freeblock(block *&b);
-extern block *duplicateblock(const block *s);
-
 // worldrender
 extern void render_world(float vx, float vy, float vh, float changelod, int yaw, int pitch, float fov, float fovy, int w, int h);
 extern int lod_factor();

@@ -53,7 +53,8 @@
 #include "water.h"
 #include "wizard.h"
 #include "worldio.h"
-#include "protos.h"                     // external function decls
+#include "worldlight.h"
+ #include "protos.h"                     // external function decls
 
 #endif
 

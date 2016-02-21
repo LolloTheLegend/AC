@@ -2,9 +2,9 @@
 
 #include "cube.h"
 
-VAR(lightscale,1,4,100);
+static VAR(lightscale,1,4,100);
 
-void lightray(float bx, float by, const persistent_entity &light, float fade = 1, bool flicker = false)     // done in realtime, needs to be fast
+static void lightray(float bx, float by, const persistent_entity &light, float fade = 1, bool flicker = false)     // done in realtime, needs to be fast
 {
     float lx = light.x+(flicker ? (rnd(21)-10)*0.1f : 0);
     float ly = light.y+(flicker ? (rnd(21)-10)*0.1f : 0);
@@ -115,7 +115,7 @@ void lightray(float bx, float by, const persistent_entity &light, float fade = 1
     }
 }
 
-void calclightsource(const persistent_entity &l, float fade = 1, bool flicker = true)
+static void calclightsource(const persistent_entity &l, float fade = 1, bool flicker = true)
 {
     int reach = l.attr1;
     int sx = l.x-reach;
@@ -129,7 +129,7 @@ void calclightsource(const persistent_entity &l, float fade = 1, bool flicker = 
     for(float sy2 = sy+s; sy2<=ey-s; sy2+=s*2)    { lightray((float)sx, sy2, l, fade, flicker); lightray((float)ex, sy2, l, fade, flicker); }
 }
 
-void postlightarealine(sqr *s, int len)
+static void postlightarealine(sqr *s, int len)
 {
     loopirev(len)
     {
@@ -144,7 +144,7 @@ void postlightarealine(sqr *s, int len)
     }
 }
 
-void postlightarea(const block &a)    // median filter, smooths out random noise in light and makes it more mipable
+static void postlightarea(const block &a)    // median filter, smooths out random noise in light and makes it more mipable
 {
     int ia = (a.xs + 1) >> 1, ib = a.xs - ia;;
     for(int y = a.ys - 1; y >= 0; y -= 2)
@@ -164,7 +164,7 @@ void postlightarea(const block &a)    // median filter, smooths out random noise
 
 int lastcalclight = 0;
 
-VARP(fullbrightlevel, 0, 176, 255);
+static VARP(fullbrightlevel, 0, 176, 255);
 
 void fullbrightlight(int level)
 {
@@ -174,6 +174,7 @@ void fullbrightlight(int level)
     lastcalclight = totalmillis;
 }
 
+// TODO: Lollo fix this extern utter crap by importing proper include file
 VARF(ambient, 0, 0, 0xFFFFFF, if(!noteditmode("ambient")) { hdr.ambient = ambient; calclight(); unsavededits++;});
 
 void calclight()
@@ -227,16 +228,16 @@ struct dlight
     }
 };
 
-vector<dlight> dlights;
+static vector<dlight> dlights;
 
-VARP(dynlight, 0, 1, 1);
+static VARP(dynlight, 0, 1, 1);
 
 static inline bool insidearea(const block &a, const block &b)
 {
     return b.x >= a.x && b.y >= a.y && b.x+b.xs <= a.x+a.xs && b.y+b.ys <= a.y+a.ys;
 }
 
-void preparedynlight(dlight &d)
+static void preparedynlight(dlight &d)
 {
     block area = { (int)d.o.x-d.reach, (int)d.o.y-d.reach, d.reach*2+1, d.reach*2+1 };
 
