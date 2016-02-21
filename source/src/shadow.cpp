@@ -6,17 +6,16 @@ VARP(stencilshadow, 0, 40, 100);
 
 int stenciling = 0;
 
-VAR(shadowclip, 0, 1, 1);
-VAR(shadowtile, 0, 1, 1);
-const int dbgtiles = 0;
-//VAR(dbgtiles, 0, 0, 1);
-VAR(shadowcasters, 1, 0, 0);
+static VAR(shadowclip, 0, 1, 1);
+static VAR(shadowtile, 0, 1, 1);
+static const int dbgtiles = 0;
+static VAR(shadowcasters, 1, 0, 0);
 
 #define SHADOWROWS 64
 #define SHADOWCOLUMNS 32
 #define SHADOWCOLUMNMASK (0xFFFFFFFFU>>(32-SHADOWCOLUMNS))
-uint shadowtiles[SHADOWROWS+1];
-float shadowx1 = 1, shadowy1 = 1, shadowx2 = -1, shadowy2 = -1;
+static uint shadowtiles[SHADOWROWS+1];
+static float shadowx1 = 1, shadowy1 = 1, shadowx2 = -1, shadowy2 = -1;
 
 static void extrudeshadowtiles(int x1, int y1, int x2, int y2, int x3, int y3)
 {

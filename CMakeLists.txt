@@ -68,7 +68,6 @@ set(
         ${ASS_CUBE_SRCS_PATH}/server.cpp
         ${ASS_CUBE_SRCS_PATH}/serverbrowser.cpp
         ${ASS_CUBE_SRCS_PATH}/shadow.cpp
-        ${ASS_CUBE_SRCS_PATH}/sound.cpp
         ${ASS_CUBE_SRCS_PATH}/stream.cpp
         ${ASS_CUBE_SRCS_PATH}/texture.cpp
         ${ASS_CUBE_SRCS_PATH}/tools.cpp

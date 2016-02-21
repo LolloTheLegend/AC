@@ -187,10 +187,6 @@ extern void updatefrommaster(int force);
 // rendergl
 extern void cleangl();
 
-// shadow
-extern bool addshadowbox(const vec &bbmin, const vec &bbmax, const vec &extrude, const glmatrixf &mat);
-extern void drawstencilshadows();
-
 static inline Texture *lookupworldtexture(int tex, bool trydl = true)
 { return lookuptexture(tex, noworldtexture, trydl); }
 

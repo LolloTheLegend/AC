@@ -47,6 +47,7 @@
 #include "renderparticles.h"
 #include "rendertext.h"
 #include "scoreboard.h"
+#include "shadow.h"
 #include "protos.h"                     // external function decls
 
 #endif
