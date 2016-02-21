@@ -1,3 +1,4 @@
+#include "zip.h"
 #include "cube.h"
 
 enum
@@ -192,7 +193,7 @@ static bool readlocalfileheader(FILE *f, ziplocalfileheader &h, uint offset)
 
 static vector<ziparchive *> archives;
 
-ziparchive *findzip(const char *name)
+static ziparchive *findzip(const char *name)
 {
     loopv(archives) if(!strcmp(name, archives[i]->name)) return archives[i];
     return NULL;
@@ -207,9 +208,9 @@ static bool checkprefix(vector<zipfile> &files, const char *prefix, int prefixle
     return true;
 }
 
-bool extractzipfile(ziparchive *a, zipfile *f, const char *name);
+static bool extractzipfile(ziparchive *a, zipfile *f, const char *name);
 
-bool fitspackage(char *filename, int type)
+static bool fitspackage(char *filename, int type)
 {
     char *extension = strrchr(filename, '.');
     ++extension;
@@ -547,7 +548,7 @@ struct zipstream : stream
     }
 };
 
-bool extractzipfile(ziparchive *a, zipfile *f, const char *name)
+static bool extractzipfile(ziparchive *a, zipfile *f, const char *name)
 {
     zipstream *s = new zipstream;
     FILE *target = NULL;

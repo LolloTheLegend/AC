@@ -5,6 +5,7 @@
 #include <SDL/SDL_keyboard.h>
 #include <string>
 #include "tools.h"
+#include "stream.h"
 #include <utf8.h>
 
 struct cline { char *line; int millis; };

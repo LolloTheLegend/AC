@@ -6,6 +6,8 @@
 
 #include "platform.h"
 #include "tools.h"
+#include "stream.h"
+#include "zip.h"
 #include "geom.h"
 #include "model.h"
 #include "protocol.h"

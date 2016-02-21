@@ -5,6 +5,7 @@
 #define SOUND_H
 
 #include "platform.h"
+#include "stream.h"
 #include "geom.h"
 
 enum
