@@ -54,7 +54,8 @@
 #include "wizard.h"
 #include "worldio.h"
 #include "worldlight.h"
- #include "protos.h"                     // external function decls
+#include "worldocull.h"
+#include "protos.h"
 
 #endif
 

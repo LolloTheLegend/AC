@@ -213,11 +213,6 @@ extern void voteresult(int v);
 extern void render_world(float vx, float vy, float vh, float changelod, int yaw, int pitch, float fov, float fovy, int w, int h);
 extern int lod_factor();
 
-// worldocull
-extern void disableraytable();
-extern void computeraytable(float vx, float vy, float fov);
-extern int isoccluded(float vx, float vy, float cx, float cy, float csize);
-
 // main
 extern SDL_Surface *screen;
 extern int colorbits, depthbits, stencilbits;

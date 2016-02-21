@@ -6,10 +6,10 @@
 #define NUMRAYS (1 << NUMRAYBITS)
 #define NUMRAYS4 (NUMRAYS * 4)
 
-float rdist[NUMRAYS];
+static float rdist[NUMRAYS];
 
-bool ocull = true;
-float odist = 256;
+static bool ocull = true;
+static float odist = 256;
 
 void toggleocull() { ocull = !ocull; }
 
