@@ -634,9 +634,6 @@ void resetgl()
 
     loadingscreen();
 
-    extern void cleanupparticles();
-    extern void cleanupmodels();
-    extern void cleanupgl();
     cleanupparticles();
     cleanupmodels();
     cleanuptextures();

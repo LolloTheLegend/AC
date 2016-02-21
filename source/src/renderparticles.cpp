@@ -51,7 +51,7 @@ static void inithemisphere(int hres, int depth)
     loopi(hres) genface(depth, 0, i+1, 1+(i+1)%hres);
 }
 
-GLuint createexpmodtex(int size, float minval)
+static GLuint createexpmodtex(int size, float minval)
 {
     uchar *data = new uchar[size*size], *dst = data;
     loop(y, size) loop(x, size)
@@ -78,9 +78,9 @@ static struct expvert
 static GLuint expmodtex[2] = {0, 0};
 static GLuint lastexpmodtex = 0;
 
-VARP(mtexplosion, 0, 1, 1);
+static VARP(mtexplosion, 0, 1, 1);
 
-void setupexplosion()
+static void setupexplosion()
 {
     if(!hemiindices) inithemisphere(5, 2);
 
@@ -131,7 +131,7 @@ void setupexplosion()
     }
 }
 
-void drawexplosion(bool inside, float r, float g, float b, float a)
+static void drawexplosion(bool inside, float r, float g, float b, float a)
 {
     if(mtexplosion && maxtmus>=2 && lastexpmodtex != expmodtex[inside ? 1 : 0])
     {
@@ -163,7 +163,7 @@ void drawexplosion(bool inside, float r, float g, float b, float a)
     }
 }
 
-void cleanupexplosion()
+static void cleanupexplosion()
 {
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -187,7 +187,7 @@ void cleanupexplosion()
 #define MAXPARTYPES 22
 
 struct particle { vec o, d; int fade, type; int millis; particle *next; };
-particle *parlist[MAXPARTYPES], *parempty = NULL;
+static particle *parlist[MAXPARTYPES], *parempty = NULL;
 
 static Texture *parttex[7];
 
@@ -223,7 +223,7 @@ void particlereset()
     }
 }
 
-void newparticle(const vec &o, const vec &d, int fade, int type)
+static void newparticle(const vec &o, const vec &d, int fade, int type)
 {
     if(OUTBORD((int)o.x, (int)o.y)) return;
 
@@ -276,10 +276,10 @@ static struct parttype { int type; float r, g, b; int gr, tex; float sz; } partt
     { PT_BULLETHOLE, 0.2f, 1.0f, 0.2f, 0,  3, 0.1f  }, // hole decal C
 };
 
-VAR(particlesize, 20, 100, 500);
+static VAR(particlesize, 20, 100, 500);
 
-VARP(blood, 0, 1, 1);
-VARP(bloodttl, 0, 10000, 30000);
+static VARP(blood, 0, 1, 1);
+static VARP(bloodttl, 0, 10000, 30000);
 
 void render_particles(int time, int typemask)
 {
@@ -595,7 +595,7 @@ void particle_cube(int type, int num, int fade, int x, int y)
     }
 }
 
-VARP(maxtrail, 1, 500, 10000);
+static VARP(maxtrail, 1, 500, 10000);
 
 void particle_trail(int type, int fade, const vec &s, const vec &e)
 {
@@ -617,10 +617,10 @@ void particle_fireball(int type, const vec &o)
     newparticle(o, vec(0, 0, 0), (int)((parttypes[type].sz-1.0f)*100.0f), type);
 }
 
-VARP(bulletbouncesound, 0, 1, 1);
-VARP(bullethole, 0, 1, 1);
-VARP(bulletholettl, 0, 10000, 30000);
-VARP(bulletbouncesoundrad, 0, 15, 1000);
+static VARP(bulletbouncesound, 0, 1, 1);
+static VARP(bullethole, 0, 1, 1);
+static VARP(bulletholettl, 0, 10000, 30000);
+static VARP(bulletbouncesoundrad, 0, 15, 1000);
 
 // 2011jun18: shotty decals
 //bool addbullethole(dynent *d, const vec &from, const vec &to, float radius, bool noisy)
@@ -647,8 +647,8 @@ bool addbullethole(dynent *d, const vec &from, const vec &to, float radius, bool
 }
 
 
-VARP(scorch, 0, 1, 1);
-VARP(scorchttl, 0, 10000, 30000);
+static VARP(scorch, 0, 1, 1);
+static VARP(scorchttl, 0, 10000, 30000);
 
 bool addscorchmark(vec &o, float radius)
 {
