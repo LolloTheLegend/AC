@@ -743,7 +743,7 @@ void respawnself()
 }
 
 // TODO: Lollo fix these 3 vars by #include proper header file/s
-extern int checkarea(int maplayout_factor, char *maplayout);
+
 extern int MA;
 extern float Mh;
 

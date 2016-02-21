@@ -56,6 +56,8 @@
 #include "worldlight.h"
 #include "worldocull.h"
 #include "worldrender.h"
+#include "server.h"
+#include "serverbrowser.h"
 #include "protos.h"
 
 #endif

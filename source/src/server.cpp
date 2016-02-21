@@ -1,78 +1,1612 @@
 // server.cpp: little more than enhanced multicaster
 // runs dedicated or as client coroutine
 
+#include "server.h"
 #include "cube.h"
 
 #ifdef STANDALONE
 #define DEBUGCOND (true)
 #else
-VARP(serverdebug, 0, 0, 1);
+static VARP(serverdebug, 0, 0, 1);
 #define DEBUGCOND (serverdebug==1)
 #endif
 
-#include "server.h"
-#include "servercontroller.h"
-#include "serverfiles.h"
+#define gamemode smode   // allows the gamemode macros to work with the server mode
+
+#define SERVER_PROTOCOL_VERSION    (PROTOCOL_VERSION)    // server without any gameplay modification
+//#define SERVER_PROTOCOL_VERSION   (-PROTOCOL_VERSION)  // server with gameplay modification but compatible to vanilla client (using /modconnect)
+//#define SERVER_PROTOCOL_VERSION  (PROTOCOL_VERSION)    // server with incompatible protocol (change PROTOCOL_VERSION in file protocol.h to a negative number!)
+
+#define valid_flag(f) (f >= 0 && f < 2)
+
+enum { GE_NONE = 0, GE_SHOT, GE_EXPLODE, GE_HIT, GE_AKIMBO, GE_RELOAD, GE_SUICIDE, GE_PICKUP };
+enum { ST_EMPTY, ST_LOCAL, ST_TCPIP };
+
+int smode = 0, nextgamemode;
+
+struct shotevent
+{
+    int type;
+    int millis, id;
+    int gun;
+    float from[3], to[3];
+};
+
+struct explodeevent
+{
+    int type;
+    int millis, id;
+    int gun;
+};
+
+struct hitevent
+{
+    int type;
+    int target;
+    int lifesequence;
+    union
+    {
+        int info;
+        float dist;
+    };
+    float dir[3];
+};
+
+struct suicideevent
+{
+    int type;
+};
+
+struct pickupevent
+{
+    int type;
+    int ent;
+};
+
+struct akimboevent
+{
+    int type;
+    int millis, id;
+};
+
+struct reloadevent
+{
+    int type;
+    int millis, id;
+    int gun;
+};
+
+union gameevent
+{
+    int type;
+    shotevent shot;
+    explodeevent explode;
+    hitevent hit;
+    suicideevent suicide;
+    pickupevent pickup;
+    akimboevent akimbo;
+    reloadevent reload;
+};
+
+template <int N>
+struct projectilestate
+{
+    int projs[N];
+    int numprojs;
+
+    projectilestate() : numprojs(0) {}
+
+    void reset() { numprojs = 0; }
+
+    void add(int val)
+    {
+        if(numprojs>=N) numprojs = 0;
+        projs[numprojs++] = val;
+    }
+
+    bool remove(int val)
+    {
+        loopi(numprojs) if(projs[i]==val)
+        {
+            projs[i] = projs[--numprojs];
+            return true;
+        }
+        return false;
+    }
+};
+
+static const int DEATHMILLIS = 300;
+
+struct clientstate : playerstate
+{
+    vec o;
+    int state;
+    int lastdeath, lastspawn, spawn, lifesequence;
+    bool forced;
+    int lastshot;
+    projectilestate<8> grenades;
+    int akimbomillis;
+    bool scoped;
+    int flagscore, frags, teamkills, deaths, shotdamage, damage, points, events, lastdisc, reconnections;
+
+    clientstate() : state(CS_DEAD) {}
+
+    bool isalive(int gamemillis)
+    {
+        return state==CS_ALIVE || (state==CS_DEAD && gamemillis - lastdeath <= DEATHMILLIS);
+    }
+
+    bool waitexpired(int gamemillis)
+    {
+        int wait = gamemillis - lastshot;
+        loopi(NUMGUNS) if(wait < gunwait[i]) return false;
+        return true;
+    }
+
+    void reset()
+    {
+        state = CS_DEAD;
+        lifesequence = -1;
+        grenades.reset();
+        akimbomillis = 0;
+        scoped = forced = false;
+        flagscore = frags = teamkills = deaths = shotdamage = damage = points = events = lastdisc = reconnections = 0;
+        respawn();
+    }
+
+    void respawn()
+    {
+        playerstate::respawn();
+        o = vec(-1e10f, -1e10f, -1e10f);
+        lastdeath = 0;
+        lastspawn = -1;
+        spawn = 0;
+        lastshot = 0;
+        akimbomillis = 0;
+        scoped = false;
+    }
+};
+
+struct savedscore
+{
+    string name;
+    uint ip;
+    int frags, flagscore, deaths, teamkills, shotdamage, damage, team, points, events, lastdisc, reconnections;
+    bool valid, forced;
+
+    void reset()
+    {
+        // to avoid 2 connections with the same score... this can disrupt some laggers that eventually produces 2 connections (but it is rare)
+        frags = flagscore = deaths = teamkills = shotdamage = damage = points = events = lastdisc = reconnections = 0;
+    }
+
+    void save(clientstate &cs, int t)
+    {
+        frags = cs.frags;
+        flagscore = cs.flagscore;
+        deaths = cs.deaths;
+        teamkills = cs.teamkills;
+        shotdamage = cs.shotdamage;
+        damage = cs.damage;
+        points = cs.points;
+        forced = cs.forced;
+        events = cs.events;
+        lastdisc = cs.lastdisc;
+        reconnections = cs.reconnections;
+        team = t;
+        valid = true;
+    }
+
+    void restore(clientstate &cs)
+    {
+        cs.frags = frags;
+        cs.flagscore = flagscore;
+        cs.deaths = deaths;
+        cs.teamkills = teamkills;
+        cs.shotdamage = shotdamage;
+        cs.damage = damage;
+        cs.points = points;
+        cs.forced = forced;
+        cs.events = events;
+        cs.lastdisc = lastdisc;
+        cs.reconnections = reconnections;
+        reset();
+    }
+};
+
+struct medals
+{
+    int dpt, lasthit, lastgun, ncovers, nhs;
+    int combohits, combo, combofrags, combotime, combodamage, ncombos;
+    int ask, askmillis, linked, linkmillis, linkreason, upmillis, flagmillis;
+    int totalhits, totalshots;
+    bool updated, combosend;
+    vec pos, flagpos;
+    void reset()
+    {
+        dpt = lasthit = lastgun = ncovers = nhs = 0;
+        combohits = combo = combofrags = combotime = combodamage = ncombos = 0;
+        askmillis = linkmillis = upmillis = flagmillis = 0;
+        linkreason = linked = ask = -1;
+        totalhits = totalshots = 0;
+        updated = combosend = false;
+        pos = flagpos = vec(-1e10f, -1e10f, -1e10f);
+    }
+};
+
+struct client                   // server side version of "dynent" type
+{
+    int type;
+    int clientnum;
+    ENetPeer *peer;
+    string hostname;
+    string name;
+    int team;
+    char lang[3];
+    int ping;
+    int skin[2];
+    int vote;
+    int role;
+    int connectmillis, lmillis, ldt, spj;
+    int mute, spam, lastvc; // server side voice comm spam control
+    int acversion, acbuildtype;
+    bool isauthed; // for passworded servers
+    bool haswelcome;
+    bool isonrightmap, loggedwrongmap, freshgame;
+    bool timesync;
+    int overflow;
+    int gameoffset, lastevent, lastvotecall;
+    int lastprofileupdate, fastprofileupdates;
+    int demoflags;
+    clientstate state;
+    vector<gameevent> events;
+    vector<uchar> position, messages;
+    string lastsaytext;
+    int saychars, lastsay, spamcount, badspeech, badmillis;
+    int at3_score, at3_lastforce, eff_score;
+    bool at3_dontmove;
+    int spawnindex;
+    int spawnperm, spawnpermsent;
+	bool autospawn;
+    int salt;
+    string pwd;
+    uint authreq; // for AUTH
+    string authname; // for AUTH
+    int mapcollisions, farpickups;
+    enet_uint32 bottomRTT;
+    medals md;
+    bool upspawnp;
+    int lag;
+    vec spawnp;
+    int nvotes;
+    int input, inputmillis;
+    int ffire, wn, f, g, t, y, p;
+    int yb, pb, oy, op, lda, ldda, fam;
+    int nt[10], np, lp, ls, lsm, ld, nd, nlt, lem, led;
+    vec cp[10], dp[10], d0, lv, lt, le;
+    float dda, tr, sda;
+    int ps, ph, tcn, bdt, pws;
+    float pr;
+    int yls, pls, tls;
+    int bs, bt, blg, bp;
+
+    gameevent &addevent()
+    {
+        static gameevent dummy;
+        if(events.length()>100) return dummy;
+        return events.add();
+    }
+
+    void mapchange(bool getmap = false)
+    {
+        state.reset();
+        events.setsize(0);
+        overflow = 0;
+        timesync = false;
+        isonrightmap = m_coop;
+        spawnperm = SP_WRONGMAP;
+        spawnpermsent = servmillis;
+		autospawn = false;
+        if(!getmap)
+        {
+            loggedwrongmap = false;
+            freshgame = true;         // permission to spawn at once
+        }
+        lastevent = 0;
+        at3_lastforce = eff_score = 0;
+        mapcollisions = farpickups = 0;
+        md.reset();
+        upspawnp = false;
+        lag = 0;
+        spawnp = vec(-1e10f, -1e10f, -1e10f);
+        lmillis = ldt = spj = 0;
+        ffire = 0;
+        f = g = y = p = t = 0;
+        yb = pb = oy = op = lda = ldda = fam = 0;
+        np = lp = ls = lsm = ld = nd = nlt = lem = led = 0;
+        d0 = lv = lt = le = vec(0,0,0);
+        loopi(10) { cp[i] = dp[i] = vec(0,0,0); nt[i] = 0; }
+        dda = tr = sda = 0;
+        ps = ph = bdt = pws = 0;
+        tcn = -1;
+        pr = 0.0f;
+        yls = pls = tls = 0;
+    }
+
+    void reset()
+    {
+        name[0] = pwd[0] = demoflags = 0;
+        bottomRTT = ping = 9999;
+        team = TEAM_SPECT;
+        state.state = CS_SPECTATE;
+        loopi(2) skin[i] = 0;
+        position.setsize(0);
+        messages.setsize(0);
+        isauthed = haswelcome = false;
+        role = CR_DEFAULT;
+        lastvotecall = 0;
+        lastprofileupdate = fastprofileupdates = 0;
+        vote = VOTE_NEUTRAL;
+        lastsaytext[0] = '\0';
+        saychars = 0;
+        spawnindex = -1;
+        authreq = 0; // for AUTH
+        mapchange();
+        freshgame = false;         // don't spawn into running games
+        mute = spam = lastvc = badspeech = badmillis = nvotes = 0;
+        input = inputmillis = 0;
+        wn = -1;
+        bs = bt = blg = bp = 0;
+    }
+
+    void zap()
+    {
+        type = ST_EMPTY;
+        role = CR_DEFAULT;
+        isauthed = haswelcome = false;
+    }
+};
+
+struct ban
+{
+    ENetAddress address;
+    int millis, type;
+};
+
+struct worldstate
+{
+    enet_uint32 uses;
+    vector<uchar> positions, messages;
+};
+
+struct server_entity            // server side version of "entity" type
+{
+    int type;
+    bool spawned, legalpickup, twice;
+    int spawntime;
+    short x, y;
+};
+
+struct clientidentity
+{
+    uint ip;
+    int clientnum;
+};
+
+struct demofile
+{
+    string info;
+    string file;
+    uchar *data;
+    int len;
+    vector<clientidentity> clientssent;
+};
+
+static void startgame(const char *newname, int newmode, int newtime = -1, bool notify = true);
+static void disconnect_client(int n, int reason = -1);
+static void sendiplist(int receiver, int cn = -1);
+static int clienthasflag(int cn);
+static bool refillteams(bool now = false, int ftr = FTR_AUTOTEAM);
+static void changeclientrole(int client, int role, char *pwd = NULL, bool force=false);
+static mapstats *getservermapstats(const char *mapname, bool getlayout = false, int *maploc = NULL);
+static int findmappath(const char *mapname, char *filename = NULL);
+static int calcscores();
+static void recordpacket(int chan, void *data, int len);
+static void senddisconnectedscores(int cn);
+static void process(ENetPacket *packet, int sender, int chan);
+static void welcomepacket(packetbuf &p, int n);
+static void sendwelcome(client *cl, int chan = 1);
+static void sendpacket(int n, int chan, ENetPacket *packet, int exclude = -1, bool demopacket = false);
+static int numclients();
+static bool updateclientteam(int cln, int newteam, int ftr);
+static void forcedeath(client *cl);
+static void sendf(int cn, int chan, const char *format, ...);
+
+bool isdedicated;
+string smapname;
+mapstats smapstats;
+char *maplayout = NULL, *testlayout = NULL;
+
+
+static const char *messagenames[SV_NUM] =
+{
+    "SV_SERVINFO", "SV_WELCOME", "SV_INITCLIENT", "SV_POS", "SV_POSC", "SV_POSN", "SV_TEXT", "SV_TEAMTEXT", "SV_TEXTME", "SV_TEAMTEXTME", "SV_TEXTPRIVATE",
+    "SV_SOUND", "SV_VOICECOM", "SV_VOICECOMTEAM", "SV_CDIS",
+    "SV_SHOOT", "SV_EXPLODE", "SV_SUICIDE", "SV_AKIMBO", "SV_RELOAD", "SV_AUTHT", "SV_AUTHREQ", "SV_AUTHTRY", "SV_AUTHANS", "SV_AUTHCHAL",
+    "SV_GIBDIED", "SV_DIED", "SV_GIBDAMAGE", "SV_DAMAGE", "SV_HITPUSH", "SV_SHOTFX", "SV_THROWNADE",
+    "SV_TRYSPAWN", "SV_SPAWNSTATE", "SV_SPAWN", "SV_SPAWNDENY", "SV_FORCEDEATH", "SV_RESUME",
+    "SV_DISCSCORES", "SV_TIMEUP", "SV_EDITENT", "SV_ITEMACC",
+    "SV_MAPCHANGE", "SV_ITEMSPAWN", "SV_ITEMPICKUP",
+    "SV_PING", "SV_PONG", "SV_CLIENTPING", "SV_GAMEMODE",
+    "SV_EDITMODE", "SV_EDITH", "SV_EDITT", "SV_EDITS", "SV_EDITD", "SV_EDITE", "SV_NEWMAP",
+    "SV_SENDMAP", "SV_RECVMAP", "SV_REMOVEMAP",
+    "SV_SERVMSG", "SV_ITEMLIST", "SV_WEAPCHANGE", "SV_PRIMARYWEAP",
+    "SV_FLAGACTION", "SV_FLAGINFO", "SV_FLAGMSG", "SV_FLAGCNT",
+    "SV_ARENAWIN",
+    "SV_SETADMIN", "SV_SERVOPINFO",
+    "SV_CALLVOTE", "SV_CALLVOTESUC", "SV_CALLVOTEERR", "SV_VOTE", "SV_VOTERESULT",
+    "SV_SETTEAM", "SV_TEAMDENY", "SV_SERVERMODE",
+    "SV_IPLIST",
+    "SV_LISTDEMOS", "SV_SENDDEMOLIST", "SV_GETDEMO", "SV_SENDDEMO", "SV_DEMOPLAYBACK",
+    "SV_CONNECT",
+    "SV_SWITCHNAME", "SV_SWITCHSKIN", "SV_SWITCHTEAM",
+    "SV_CLIENT",
+    "SV_EXTENSION",
+    "SV_MAPIDENT", "SV_HUDEXTRAS", "SV_POINTS"
+};
+
+const char *entnames[MAXENTTYPES] =
+{
+    "none?",
+    "light", "playerstart", "pistol", "ammobox","grenades",
+    "health", "helmet", "armour", "akimbo",
+    "mapmodel", "trigger", "ladder", "ctf-flag", "sound", "clip", "plclip"
+};
+
+// see entity.h:61: struct itemstat { int add, start, max, sound; };
+// Please update ./ac_website/htdocs/docs/introduction.html if these figures change.
+itemstat ammostats[NUMGUNS] =
+{
+    {  1,  1,   1,  S_ITEMAMMO  },   // knife dummy
+    { 20, 60, 100,  S_ITEMAMMO  },   // pistol
+    { 15, 30,  30,  S_ITEMAMMO  },   // carbine
+    { 14, 28,  21,  S_ITEMAMMO  },   // shotgun
+    { 60, 90,  90,  S_ITEMAMMO  },   // subgun
+    { 10, 20,  15,  S_ITEMAMMO  },   // sniper
+    { 40, 60,  60,  S_ITEMAMMO  },   // assault
+    { 30, 45,  75,  S_ITEMAMMO  },   // cpistol
+    {  1,  0,   3,  S_ITEMAMMO  },   // grenade
+    {100,  0, 100,  S_ITEMAKIMBO}    // akimbo
+};
+
+itemstat powerupstats[I_ARMOUR-I_HEALTH+1] =
+{
+    {33, 0, 100, S_ITEMHEALTH}, // 0 health
+    {25, 0, 100, S_ITEMHELMET}, // 1 helmet
+    {50, 0, 100, S_ITEMARMOUR}, // 2 armour
+};
+
+guninfo guns[NUMGUNS] =
+{
+    // Please update ./ac_website/htdocs/docs/introduction.html if these figures change.
+    //mKR: mdl_kick_rot && mKB: mdl_kick_back
+    //reI: recoilincrease && reB: recoilbase && reM: maxrecoil && reF: recoilbackfade
+    //pFX: pushfactor
+    //modelname                   reload       attackdelay      piercing     part     recoil       mKR       reI          reM           pFX
+    //              sound                reloadtime        damage    projspeed  spread     magsize     mKB        reB             reF           isauto
+    { "knife",      S_KNIFE,      S_NULL,     0,      500,    50, 100,     0,   0,  1,    1,   1,    0,  0,   0,   0,      0,      0,   1,      false },
+    { "pistol",     S_PISTOL,     S_RPISTOL,  1400,   160,    18,   0,     0,   0, 53,   10,   10,   6,  5,   6,  35,     58,     125,  1,      false },
+    { "carbine",    S_CARBINE,    S_RCARBINE, 1800,   720,    60,  40,     0,   0, 10,   60,   10,   4,  4,  10,  60,     60,     150,  1,      false },
+    { "shotgun",    S_SHOTGUN,    S_RSHOTGUN, 2400,   880,    1,    0,     0,   0,  1,   35,    7,   9,  9,  10, 140,    140,    125,   1,      false },   // CAUTION dmg only sane for server!
+    { "subgun",     S_SUBGUN,     S_RSUBGUN,  1650,   80,     16,   0,     0,   0, 45,   15,   30,   1,  2,   5,  25,     50,     188,  1,      true  },
+    { "sniper",     S_SNIPER,     S_RSNIPER,  1950,   1500,   82,  25,     0,   0, 50,   50,    5,   4,  4,  10,  85,     85,     100,  1,      false },
+    { "assault",    S_ASSAULT,    S_RASSAULT, 2000,   120,    22,   0,     0,   0, 18,   30,   20,   0,  2,   3,  25,     50,     115,  1,      true  },
+    { "cpistol",    S_PISTOL,     S_RPISTOL,  1400,   120,    19,   0,     0,   0, 35,   10,   15,   6,  5,   6,  35,     50,     125,  1,      false },   // temporary
+    { "grenade",    S_NULL,       S_NULL,     1000,   650,    200,  0,    20,  6,  1,    1,   1,    3,   1,    0,   0,      0,      0,   3,      false },
+    { "pistol",     S_PISTOL,     S_RAKIMBO,  1400,   80,     19,   0,     0,   0, 50,   10,   20,   6,  5,   4,  15,     25,     115,  1,      true  },
+};
+
+const char *teamnames[TEAM_NUM+1] = {"CLA", "RVSF", "CLA-SPECT", "RVSF-SPECT", "SPECTATOR", "void"};
+const char *teamnames_s[TEAM_NUM+1] = {"CLA", "RVSF", "CSPC", "RSPC", "SPEC", "void"};
+
+// for both client and server
+// default messages are hardcoded !
+char killmessages[2][NUMGUNS][MAXKILLMSGLEN] = {{ "", "busted", "picked off", "peppered", "sprayed", "punctured", "shredded", "busted", "", "busted" }, { "slashed", "", "", "splattered", "", "headshot", "", "", "gibbed", "" }};
+
+struct servercontroller
+{
+    virtual void start() = 0;
+    virtual void keepalive() = 0;
+    virtual void stop() = 0;
+    virtual ~servercontroller() {}
+    int argc;
+    char **argv;
+};
+
+#ifdef WIN32
+
+struct winservice : servercontroller
+{
+    SERVICE_STATUS_HANDLE statushandle;
+    SERVICE_STATUS status;
+    HANDLE stopevent;
+    const char *name;
+
+    winservice(const char *name) : name(name)
+    {
+        callbacks::svc = this;
+        statushandle = 0;
+    };
+
+    ~winservice()
+    {
+        if(status.dwCurrentState != SERVICE_STOPPED) stop();
+        callbacks::svc = NULL;
+    }
+
+    void start() // starts the server again on a new thread and returns once the windows service has stopped
+    {
+        SERVICE_TABLE_ENTRY dispatchtable[] = { { (LPSTR)name, (LPSERVICE_MAIN_FUNCTION)callbacks::main }, { NULL, NULL } };
+        if(StartServiceCtrlDispatcher(dispatchtable)) exit(EXIT_SUCCESS);
+        else fatal("an error occurred running the AC server as windows service. make sure you start the server from the service control manager and not from the command line.");
+    }
+
+    void keepalive()
+    {
+        if(statushandle)
+        {
+            report(SERVICE_RUNNING, 0);
+            handleevents();
+        }
+    };
+
+    void stop()
+    {
+        if(statushandle)
+        {
+            report(SERVICE_STOP_PENDING, 0);
+            if(stopevent) CloseHandle(stopevent);
+            status.dwControlsAccepted &= ~(SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN);
+            report(SERVICE_STOPPED, 0);
+        }
+    }
+
+    void handleevents()
+    {
+        if(WaitForSingleObject(stopevent, 0) == WAIT_OBJECT_0) stop();
+    }
+
+    void WINAPI requesthandler(DWORD ctrl)
+    {
+        switch(ctrl)
+        {
+            case SERVICE_CONTROL_STOP:
+                report(SERVICE_STOP_PENDING, 0);
+                SetEvent(stopevent);
+                return;
+            default: break;
+        }
+        report(status.dwCurrentState, 0);
+    }
+
+    void report(DWORD state, DWORD wait)
+    {
+        status.dwCurrentState = state;
+        status.dwWaitHint = wait;
+        status.dwWin32ExitCode = NO_ERROR;
+        status.dwControlsAccepted = SERVICE_START_PENDING == state || SERVICE_STOP_PENDING == state ? 0 : SERVICE_ACCEPT_STOP;
+        if(state == SERVICE_RUNNING || state == SERVICE_STOPPED) status.dwCheckPoint = 0;
+        else status.dwCheckPoint++;
+        SetServiceStatus(statushandle, &status);
+    }
+
+    int WINAPI svcmain() // new server thread's entry point
+    {
+        // fix working directory to make relative paths work
+        if(argv && argv[0])
+        {
+            string procpath;
+            copystring(procpath, parentdir(argv[0]));
+            copystring(procpath, parentdir(procpath));
+            SetCurrentDirectory((LPSTR)procpath);
+        }
+
+        statushandle = RegisterServiceCtrlHandler(name, (LPHANDLER_FUNCTION)callbacks::requesthandler);
+        if(!statushandle) return EXIT_FAILURE;
+        status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+        status.dwServiceSpecificExitCode = 0;
+        report(SERVICE_START_PENDING, 3000);
+        stopevent = CreateEvent(NULL, true, false, NULL);
+        if(!stopevent) { stop(); return EXIT_FAILURE; }
+        extern int main(int argc, char **argv);
+        return main(argc, argv);
+    }
+
+
+    struct callbacks
+    {
+        static winservice *svc;
+        static int WINAPI main() { return svc->svcmain(); };
+        static void WINAPI requesthandler(DWORD request) { svc->requesthandler(request); };
+    };
+
+}
+winservice *winservice::callbacks::svc = (winservice *)NULL;
+
+#endif
+
+#define SERVERMAP_PATH          "packages/maps/servermaps/"
+#define SERVERMAP_PATH_BUILTIN  "packages/maps/official/"
+#define SERVERMAP_PATH_INCOMING "packages/maps/servermaps/incoming/"
+
+#define GZBUFSIZE ((MAXCFGFILESIZE * 11) / 10)
+
+struct servermapbuffer  // sending of maps between clients
+{
+    string mapname;
+    int cgzsize, cfgsize, cfgsizegz, revision, datasize;
+    uchar *data, *gzbuf;
+
+    servermapbuffer() : data(NULL) { gzbuf = new uchar[GZBUFSIZE]; }
+    ~servermapbuffer() { delete[] gzbuf; }
+
+    void clear() { DELETEA(data); revision = 0; }
+
+    int available()
+    {
+        if(data && !strcmp(mapname, behindpath(smapname)) && cgzsize == smapstats.cgzsize)
+        {
+            if( !revision || (revision == smapstats.hdr.maprevision)) return cgzsize;
+        }
+        return 0;
+    }
+
+    void setrevision()
+    {
+        if(available() && !revision) revision = smapstats.hdr.maprevision;
+    }
+
+    void load(void)  // load currently played map into the buffer (if distributable), clear buffer otherwise
+    {
+        string cgzname, cfgname;
+        const char *name = behindpath(smapname);   // no paths allowed here
+
+        clear();
+        formatstring(cgzname)(SERVERMAP_PATH "%s.cgz", name);
+        path(cgzname);
+        if(fileexists(cgzname, "r"))
+        {
+            formatstring(cfgname)(SERVERMAP_PATH "%s.cfg", name);
+        }
+        else
+        {
+            formatstring(cgzname)(SERVERMAP_PATH_INCOMING "%s.cgz", name);
+            path(cgzname);
+            formatstring(cfgname)(SERVERMAP_PATH_INCOMING "%s.cfg", name);
+        }
+        path(cfgname);
+        uchar *cgzdata = (uchar *)loadfile(cgzname, &cgzsize);
+        uchar *cfgdata = (uchar *)loadfile(cfgname, &cfgsize);
+        if(cgzdata && (!cfgdata || cfgsize < MAXCFGFILESIZE))
+        {
+            uLongf gzbufsize = GZBUFSIZE;
+            if(!cfgdata || compress2(gzbuf, &gzbufsize, cfgdata, cfgsize, 9) != Z_OK)
+            {
+                cfgsize = 0;
+                gzbufsize = 0;
+            }
+            cfgsizegz = (int) gzbufsize;
+            if(cgzsize + cfgsizegz < MAXMAPSENDSIZE)
+            { // map is ok, fill buffer
+                copystring(mapname, name);
+                datasize = cgzsize + cfgsizegz;
+                data = new uchar[datasize];
+                memcpy(data, cgzdata, cgzsize);
+                memcpy(data + cgzsize, gzbuf, cfgsizegz);
+                logline(ACLOG_INFO,"loaded map %s, %d + %d(%d) bytes.", cgzname, cgzsize, cfgsize, cfgsizegz);
+            }
+        }
+        DELETEA(cgzdata);
+        DELETEA(cfgdata);
+    }
+
+    bool sendmap(const char *nmapname, int nmapsize, int ncfgsize, int ncfgsizegz, uchar *ndata)
+    {
+        FILE *fp;
+        bool written = false;
+
+        if(!nmapname[0] || nmapsize <= 0 || ncfgsizegz < 0 || nmapsize + ncfgsizegz > MAXMAPSENDSIZE || ncfgsize > MAXCFGFILESIZE) return false;  // malformed: probably modded client
+        int cfgsize = ncfgsize;
+        if(smode == GMODE_COOPEDIT && !strcmp(nmapname, behindpath(smapname)))
+        { // update mapbuffer only in coopedit mode (and on same map)
+            copystring(mapname, nmapname);
+            datasize = nmapsize + ncfgsizegz;
+            revision = 0;
+            DELETEA(data);
+            data = new uchar[datasize];
+            memcpy(data, ndata, datasize);
+        }
+
+        defformatstring(name)(SERVERMAP_PATH_INCOMING "%s.cgz", nmapname);
+        path(name);
+        fp = fopen(name, "wb");
+        if(fp)
+        {
+            fwrite(ndata, 1, nmapsize, fp);
+            fclose(fp);
+            formatstring(name)(SERVERMAP_PATH_INCOMING "%s.cfg", nmapname);
+            path(name);
+            fp = fopen(name, "wb");
+            if(fp)
+            {
+                uLongf rawsize = ncfgsize;
+                if(uncompress(gzbuf, &rawsize, ndata + nmapsize, ncfgsizegz) == Z_OK && rawsize - ncfgsize == 0)
+                    fwrite(gzbuf, 1, cfgsize, fp);
+                fclose(fp);
+                written = true;
+            }
+        }
+        return written;
+    }
+
+    void sendmap(client *cl, int chan)
+    {
+        if(!available()) return;
+        packetbuf p(MAXTRANS + datasize, ENET_PACKET_FLAG_RELIABLE);
+        putint(p, SV_RECVMAP);
+        sendstring(mapname, p);
+        putint(p, cgzsize);
+        putint(p, cfgsize);
+        putint(p, cfgsizegz);
+        putint(p, revision);
+        p.put(data, datasize);
+        sendpacket(cl->clientnum, chan, p.finalize());
+    }
+};
+
+
+// provide maps by the server
+
+enum { MAP_NOTFOUND = 0, MAP_TEMP, MAP_CUSTOM, MAP_LOCAL, MAP_OFFICIAL, MAP_VOID };
+static const char * const maplocstr[] = { "not found", "temporary", "custom", "local", "official", "void" };
+#define readonlymap(x) ((x) >= MAP_CUSTOM)
+#define distributablemap(x) ((x) == MAP_TEMP || (x) == MAP_CUSTOM)
+
+static int findmappath(const char *mapname, char *filename)
+{
+    if(!mapname[0]) return MAP_NOTFOUND;
+    string tempname;
+    if(!filename) filename = tempname;
+    const char *name = behindpath(mapname);
+    formatstring(filename)(SERVERMAP_PATH_BUILTIN "%s.cgz", name);
+    path(filename);
+    int loc = MAP_NOTFOUND;
+    if(getfilesize(filename) > 10) loc = MAP_OFFICIAL;
+    else
+    {
+#ifndef STANDALONE
+        copystring(filename, setnames(name));
+        if(!isdedicated && getfilesize(filename) > 10) loc = MAP_LOCAL;
+        else
+        {
+#endif
+            formatstring(filename)(SERVERMAP_PATH "%s.cgz", name);
+            path(filename);
+            if(isdedicated && getfilesize(filename) > 10) loc = MAP_CUSTOM;
+            else
+            {
+                formatstring(filename)(SERVERMAP_PATH_INCOMING "%s.cgz", name);
+                path(filename);
+                if(isdedicated && getfilesize(filename) > 10) loc = MAP_TEMP;
+            }
+#ifndef STANDALONE
+        }
+#endif
+    }
+    return loc;
+}
+
+static mapstats *getservermapstats(const char *mapname, bool getlayout, int *maploc)
+{
+    string filename;
+    int ml;
+    if(!maploc) maploc = &ml;
+    *maploc = findmappath(mapname, filename);
+    if(getlayout) DELETEA(maplayout);
+    return *maploc == MAP_NOTFOUND ? NULL : loadmapstats(filename, getlayout);
+}
+
+
+// maprot.cfg
+
+#define CONFIG_MAXPAR 6
+
+struct configset
+{
+    string mapname;
+    union
+    {
+        struct { int mode, time, vote, minplayer, maxplayer, skiplines; };
+        int par[CONFIG_MAXPAR];
+    };
+};
+
+static int FlagFlag = MINFF * 1000;
+int Mvolume, Marea, SHhits, Mopen = 0;
+float Mheight = 0;
+
+static bool mapisok(mapstats *ms)
+{
+    if ( Mheight > MAXMHEIGHT ) { logline(ACLOG_INFO, "MAP CHECK FAIL: The overall ceil height is too high (%.1f cubes)", Mheight); return false; }
+    if ( Mopen > MAXMAREA ) { logline(ACLOG_INFO, "MAP CHECK FAIL: There is a big open area in this (hint: use more solid walls)", Mheight); return false; }
+    if ( SHhits > MAXHHITS ) { logline(ACLOG_INFO, "MAP CHECK FAIL: Too high height in some parts of the map (%d hits)", SHhits); return false; }
+
+    if ( ms->hasflags ) // Check if flags are ok
+    {
+        struct { short x, y; } fl[2];
+        loopi(2)
+        {
+            if(ms->flags[i] == 1)
+            {
+                short *fe = ms->entposs + ms->flagents[i] * 3;
+                fl[i].x = *fe; fe++; fl[i].y = *fe;
+            }
+            else fl[i].x = fl[i].y = 0; // the map has no valid flags
+        }
+        FlagFlag = pow2(fl[0].x - fl[1].x) + pow2(fl[0].y - fl[1].y);
+    }
+    else FlagFlag = MINFF * 1000; // the map has no flags
+
+    if ( FlagFlag < MINFF ) { logline(ACLOG_INFO, "MAP CHECK FAIL: The flags are too close to each other"); return false; }
+
+    for (int i = 0; i < ms->hdr.numents; i++)
+    {
+        int v = ms->enttypes[i];
+        if (v < I_CLIPS || v > I_AKIMBO) continue;
+        short *p = &ms->entposs[i*3];
+        float density = 0, hdensity = 0;
+        for(int j = 0; j < ms->hdr.numents; j++)
+        {
+            int w = ms->enttypes[j];
+            if (w < I_CLIPS || w > I_AKIMBO || i == j) continue;
+            short *q = &ms->entposs[j*3];
+            float r2 = 0;
+            loopk(3){ r2 += (p[k]-q[k])*(p[k]-q[k]); }
+            if ( r2 == 0.0f ) { logline(ACLOG_INFO, "MAP CHECK FAIL: Items too close %s %s (%hd,%hd)", entnames[v], entnames[w],p[0],p[1]); return false; }
+            r2 = 1/r2;
+            if (r2 < 0.0025f) continue;
+            if (w != v)
+            {
+                hdensity += r2;
+                continue;
+            }
+            density += r2;
+        }
+/*        if (hdensity > 0.0f) { logline(ACLOG_INFO, "ITEM CHECK H %s %f", entnames[v], hdensity); }
+        if (density > 0.0f) { logline(ACLOG_INFO, "ITEM CHECK D %s %f", entnames[v], density); }*/
+        if ( hdensity > 0.5f ) { logline(ACLOG_INFO, "MAP CHECK FAIL: Items too close %s %.2f (%hd,%hd)", entnames[v],hdensity,p[0],p[1]); return false; }
+        switch(v)
+        {
+#define LOGTHISSWITCH(X) if( density > X ) { logline(ACLOG_INFO, "MAP CHECK FAIL: Items too close %s %.2f (%hd,%hd)", entnames[v],density,p[0],p[1]); return false; }
+            case I_CLIPS:
+            case I_HEALTH: LOGTHISSWITCH(0.24f); break;
+            case I_AMMO: LOGTHISSWITCH(0.04f); break;
+            case I_HELMET: LOGTHISSWITCH(0.02f); break;
+            case I_ARMOUR:
+            case I_GRENADE:
+            case I_AKIMBO: LOGTHISSWITCH(0.005f); break;
+            default: break;
+#undef LOGTHISSWITCH
+        }
+    }
+    return true;
+}
+
+struct servermaprot : serverconfigfile
+{
+    vector<configset> configsets;
+    int curcfgset;
+
+    servermaprot() : curcfgset(-1) {}
+
+    void read()
+    {
+        if(getfilesize(filename) == filelen) return;
+        configsets.shrink(0);
+        if(!load()) return;
+
+        const char *sep = ": ";
+        configset c;
+        int i, line = 0;
+        char *l, *p = buf;
+        logline(ACLOG_VERBOSE,"reading map rotation '%s'", filename);
+        while(p < buf + filelen)
+        {
+            l = p; p += strlen(p) + 1; line++;
+            l = strtok(l, sep);
+            if(l)
+            {
+                copystring(c.mapname, behindpath(l));
+                for(i = 3; i < CONFIG_MAXPAR; i++) c.par[i] = 0;  // default values
+                for(i = 0; i < CONFIG_MAXPAR; i++)
+                {
+                    if((l = strtok(NULL, sep)) != NULL) c.par[i] = atoi(l);
+                    else break;
+                }
+                if(i > 2)
+                {
+                    configsets.add(c);
+                    logline(ACLOG_VERBOSE," %s, %s, %d minutes, vote:%d, minplayer:%d, maxplayer:%d, skiplines:%d", c.mapname, modestr(c.mode, false), c.time, c.vote, c.minplayer, c.maxplayer, c.skiplines);
+                }
+                else logline(ACLOG_INFO," error in line %d, file %s", line, filename);
+            }
+        }
+        DELETEA(buf);
+        logline(ACLOG_INFO,"read %d map rotation entries from '%s'", configsets.length(), filename);
+        return;
+    }
+
+    int next(bool notify = true, bool nochange = false) // load next maprotation set
+    {
+#ifndef STANDALONE
+        if(!isdedicated)
+        {
+            defformatstring(nextmapalias)("nextmap_%s", getclientmap());
+            const char *map = getalias(nextmapalias);     // look up map in the cycle
+            startgame(map && notify ? map : getclientmap(), getclientmode(), -1, notify);
+            return -1;
+        }
+#endif
+        if(configsets.empty()) fatal("maprot unavailable");
+        int n = numclients();
+        int csl = configsets.length();
+        int ccs = curcfgset;
+        if(ccs >= 0 && ccs < csl) ccs += configsets[ccs].skiplines;
+        configset *c = NULL;
+        loopi(3 * csl + 1)
+        {
+            ccs++;
+            if(ccs >= csl || ccs < 0) ccs = 0;
+            c = &configsets[ccs];
+            if((n >= c->minplayer || i >= csl) && (!c->maxplayer || n <= c->maxplayer || i >= 2 * csl))
+            {
+                mapstats *ms = NULL;
+                if((ms = getservermapstats(c->mapname)) && mapisok(ms)) break;
+                else logline(ACLOG_INFO, "maprot error: map '%s' %s", c->mapname, (ms ? "does not satisfy some basic requirements" : "not found"));
+            }
+            if(i >= 3 * csl) fatal("maprot unusable"); // not a single map in rotation can be found...
+        }
+        if(!nochange)
+        {
+            curcfgset = ccs;
+            startgame(c->mapname, c->mode, c->time, notify);
+        }
+        return ccs;
+    }
+
+    void restart(bool notify = true) // restart current map
+    {
+#ifndef STANDALONE
+        if(!isdedicated)
+        {
+            startgame(getclientmap(), getclientmode(), -1, notify);
+            return;
+        }
+#endif
+    startgame(smapname, smode, -1, notify);
+    }
+
+    configset *current() { return configsets.inrange(curcfgset) ? &configsets[curcfgset] : NULL; }
+    configset *get(int ccs) { return configsets.inrange(ccs) ? &configsets[ccs] : NULL; }
+};
+
+// serverblacklist.cfg
+
+struct serveripblacklist : serverconfigfile
+{
+    vector<iprange> ipranges;
+
+    void read()
+    {
+        if(getfilesize(filename) == filelen) return;
+        ipranges.shrink(0);
+        if(!load()) return;
+
+        iprange ir;
+        int line = 0, errors = 0;
+        char *l, *r, *p = buf;
+        logline(ACLOG_VERBOSE,"reading ip blacklist '%s'", filename);
+        while(p < buf + filelen)
+        {
+            l = p; p += strlen(p) + 1; line++;
+            if((r = (char *) atoipr(l, &ir)))
+            {
+                ipranges.add(ir);
+                l = r;
+            }
+            if(l[strspn(l, " ")])
+            {
+                for(int i = (int)strlen(l) - 1; i > 0 && l[i] == ' '; i--) l[i] = '\0';
+                logline(ACLOG_INFO," error in line %d, file %s: ignored '%s'", line, filename, l);
+                errors++;
+            }
+        }
+        DELETEA(buf);
+        ipranges.sort(cmpiprange);
+        int orglength = ipranges.length();
+        loopv(ipranges)
+        {
+            if(!i) continue;
+            if(ipranges[i].ur <= ipranges[i - 1].ur)
+            {
+                if(ipranges[i].lr == ipranges[i - 1].lr && ipranges[i].ur == ipranges[i - 1].ur)
+                    logline(ACLOG_VERBOSE," blacklist entry %s got dropped (double entry)", iprtoa(ipranges[i]));
+                else
+                    logline(ACLOG_VERBOSE," blacklist entry %s got dropped (already covered by %s)", iprtoa(ipranges[i]), iprtoa(ipranges[i - 1]));
+                ipranges.remove(i--); continue;
+            }
+            if(ipranges[i].lr <= ipranges[i - 1].ur)
+            {
+                logline(ACLOG_VERBOSE," blacklist entries %s and %s are joined due to overlap", iprtoa(ipranges[i - 1]), iprtoa(ipranges[i]));
+                ipranges[i - 1].ur = ipranges[i].ur;
+                ipranges.remove(i--); continue;
+            }
+        }
+        loopv(ipranges) logline(ACLOG_VERBOSE," %s", iprtoa(ipranges[i]));
+        logline(ACLOG_INFO,"read %d (%d) blacklist entries from '%s', %d errors", ipranges.length(), orglength, filename, errors);
+    }
+
+    bool check(enet_uint32 ip) // ip: network byte order
+    {
+        iprange t;
+        t.lr = ENET_NET_TO_HOST_32(ip); // blacklist uses host byte order
+        t.ur = 0;
+        return ipranges.search(&t, cmpipmatch) != NULL;
+    }
+};
+
+// nicknameblacklist.cfg
+
+#define MAXNICKFRAGMENTS 5
+enum { NWL_UNLISTED = 0, NWL_PASS, NWL_PWDFAIL, NWL_IPFAIL };
+
+struct servernickblacklist : serverconfigfile
+{
+    struct iprchain     { struct iprange ipr; const char *pwd; int next; };
+    struct blackline    { int frag[MAXNICKFRAGMENTS]; bool ignorecase; int line; void clear() { loopi(MAXNICKFRAGMENTS) frag[i] = -1; } };
+    hashtable<const char *, int> whitelist;
+    vector<iprchain> whitelistranges;
+    vector<blackline> blacklines;
+    vector<const char *> blfraglist;
+
+    void destroylists()
+    {
+        whitelistranges.setsize(0);
+        enumeratek(whitelist, const char *, key, delete key);
+        whitelist.clear(false);
+        blfraglist.deletecontents();
+        blacklines.setsize(0);
+    }
+
+    void read()
+    {
+        if(getfilesize(filename) == filelen) return;
+        destroylists();
+        if(!load()) return;
+
+        const char *sep = " ";
+        int line = 1, errors = 0;
+        iprchain iprc;
+        blackline bl;
+        char *l, *s, *r, *p = buf;
+        logline(ACLOG_VERBOSE,"reading nickname blacklist '%s'", filename);
+        while(p < buf + filelen)
+        {
+            l = p; p += strlen(p) + 1;
+            l = strtok(l, sep);
+            if(l)
+            {
+                s = strtok(NULL, sep);
+                int ic = 0;
+                if(s && (!strcmp(l, "accept") || !strcmp(l, "a")))
+                { // accept nickname IP-range
+                    int *i = whitelist.access(s);
+                    if(!i) i = &whitelist.access(newstring(s), -1);
+                    s += strlen(s) + 1;
+                    while(s < p)
+                    {
+                        r = (char *) atoipr(s, &iprc.ipr);
+                        s += strspn(s, sep);
+                        iprc.pwd = r && *s ? NULL : newstring(s, strcspn(s, sep));
+                        if(r || *s)
+                        {
+                            iprc.next = *i;
+                            *i = whitelistranges.length();
+                            whitelistranges.add(iprc);
+                            s = r ? r : s + strlen(iprc.pwd);
+                        }
+                        else break;
+                    }
+                    s = NULL;
+                }
+                else if(s && (!strcmp(l, "block") || !strcmp(l, "b") || ic++ || !strcmp(l, "blocki") || !strcmp(l, "bi")))
+                { // block nickname fragments (ic == ignore case)
+                    bl.clear();
+                    loopi(MAXNICKFRAGMENTS)
+                    {
+                        if(ic) strtoupper(s);
+                        loopvj(blfraglist)
+                        {
+                            if(!strcmp(s, blfraglist[j])) { bl.frag[i] = j; break; }
+                        }
+                        if(bl.frag[i] < 0)
+                        {
+                            bl.frag[i] = blfraglist.length();
+                            blfraglist.add(newstring(s));
+                        }
+                        s = strtok(NULL, sep);
+                        if(!s) break;
+                    }
+                    bl.ignorecase = ic > 0;
+                    bl.line = line;
+                    blacklines.add(bl);
+                }
+                else { logline(ACLOG_INFO," error in line %d, file %s: unknown keyword '%s'", line, filename, l); errors++; }
+                if(s && s[strspn(s, " ")]) { logline(ACLOG_INFO," error in line %d, file %s: ignored '%s'", line, filename, s); errors++; }
+            }
+            line++;
+        }
+        DELETEA(buf);
+        logline(ACLOG_VERBOSE," nickname whitelist (%d entries):", whitelist.numelems);
+        string text;
+        enumeratekt(whitelist, const char *, key, int, idx,
+        {
+            text[0] = '\0';
+            for(int i = idx; i >= 0; i = whitelistranges[i].next)
+            {
+                iprchain &ic = whitelistranges[i];
+                if(ic.pwd) concatformatstring(text, "  pwd:\"%s\"", hiddenpwd(ic.pwd));
+                else concatformatstring(text, "  %s", iprtoa(ic.ipr));
+            }
+            logline(ACLOG_VERBOSE, "  accept %s%s", key, text);
+        });
+        logline(ACLOG_VERBOSE," nickname blacklist (%d entries):", blacklines.length());
+        loopv(blacklines)
+        {
+            text[0] = '\0';
+            loopj(MAXNICKFRAGMENTS)
+            {
+                int k = blacklines[i].frag[j];
+                if(k >= 0) { concatstring(text, " "); concatstring(text, blfraglist[k]); }
+            }
+            logline(ACLOG_VERBOSE, "  %2d block%s%s", blacklines[i].line, blacklines[i].ignorecase ? "i" : "", text);
+        }
+        logline(ACLOG_INFO,"read %d + %d entries from nickname blacklist file '%s', %d errors", whitelist.numelems, blacklines.length(), filename, errors);
+    }
+
+    int checkwhitelist(const client &c)
+    {
+        if(c.type != ST_TCPIP) return NWL_PASS;
+        iprange ipr;
+        ipr.lr = ENET_NET_TO_HOST_32(c.peer->address.host); // blacklist uses host byte order
+        int *idx = whitelist.access(c.name);
+        if(!idx) return NWL_UNLISTED; // no matching entry
+        int i = *idx;
+        bool needipr = false, iprok = false, needpwd = false, pwdok = false;
+        while(i >= 0)
+        {
+            iprchain &ic = whitelistranges[i];
+            if(ic.pwd)
+            { // check pwd
+                needpwd = true;
+                if(pwdok || !strcmp(genpwdhash(c.name, ic.pwd, c.salt), c.pwd)) pwdok = true;
+            }
+            else
+            { // check IP
+                needipr = true;
+                if(!cmpipmatch(&ipr, &ic.ipr)) iprok = true; // range match found
+            }
+            i = whitelistranges[i].next;
+        }
+        if(needpwd && !pwdok) return NWL_PWDFAIL; // wrong PWD
+        if(needipr && !iprok) return NWL_IPFAIL; // wrong IP
+        return NWL_PASS;
+    }
+
+    int checkblacklist(const char *name)
+    {
+        if(blacklines.empty()) return -2;  // no nickname blacklist loaded
+        string nameuc;
+        copystring(nameuc, name);
+        strtoupper(nameuc);
+        loopv(blacklines)
+        {
+            loopj(MAXNICKFRAGMENTS)
+            {
+                int k = blacklines[i].frag[j];
+                if(k < 0) return blacklines[i].line; // no more fragments to check
+                if(strstr(blacklines[i].ignorecase ? nameuc : name, blfraglist[k]))
+                {
+                    if(j == MAXNICKFRAGMENTS - 1) return blacklines[i].line; // all fragments match
+                }
+                else break; // this line no match
+            }
+        }
+        return -1; // no match
+    }
+};
+
+#define FORBIDDENSIZE 15
+struct serverforbiddenlist : serverconfigfile
+{
+    int num;
+    char entries[100][2][FORBIDDENSIZE+1]; // 100 entries and 2 words per entry is more than enough
+
+    void initlist()
+    {
+        num = 0;
+        memset(entries,'\0',2*100*(FORBIDDENSIZE+1));
+    }
+
+    void addentry(char *s)
+    {
+        int len = strlen(s);
+        if ( len > 128 || len < 3 ) return;
+        int n = 0;
+        string s1, s2;
+        char *c1 = s1, *c2 = s2;
+        if (num < 100 && (n = sscanf(s,"%s %s",s1,s2)) > 0 ) // no warnings
+        {
+            strncpy(entries[num][0],c1,FORBIDDENSIZE);
+            if ( n > 1 ) strncpy(entries[num][1],c2,FORBIDDENSIZE);
+            else entries[num][1][0]='\0';
+            num++;
+        }
+    }
+
+    void read()
+    {
+        if(getfilesize(filename) == filelen) return;
+        initlist();
+        if(!load()) return;
+
+        char *l, *p = buf;
+        logline(ACLOG_VERBOSE,"reading forbidden list '%s'", filename);
+        while(p < buf + filelen)
+        {
+            l = p; p += strlen(p) + 1;
+            addentry(l);
+        }
+        DELETEA(buf);
+    }
+
+    bool canspeech(char *s)
+    {
+        for (int i=0; i<num; i++){
+            if ( !findpattern(s,entries[i][0]) ) continue;
+            else if ( entries[i][1][0] == '\0' || findpattern(s,entries[i][1]) ) return false;
+        }
+        return true;
+    }
+};
+
+// serverpwd.cfg
+
+#define ADMINPWD_MAXPAR 1
+struct pwddetail
+{
+    string pwd;
+    int line;
+    bool denyadmin;    // true: connect only
+};
+
+static int passtime = 0, passtries = 0;
+static enet_uint32 passguy = 0;
+
+struct serverpasswords : serverconfigfile
+{
+    vector<pwddetail> adminpwds;
+    int staticpasses;
+
+    serverpasswords() : staticpasses(0) {}
+
+    void init(const char *name, const char *cmdlinepass)
+    {
+        if(cmdlinepass[0])
+        {
+            pwddetail c;
+            copystring(c.pwd, cmdlinepass);
+            c.line = 0;   // commandline is 'line 0'
+            c.denyadmin = false;
+            adminpwds.add(c);
+        }
+        staticpasses = adminpwds.length();
+        serverconfigfile::init(name);
+    }
+
+    void read()
+    {
+        if(getfilesize(filename) == filelen) return;
+        adminpwds.shrink(staticpasses);
+        if(!load()) return;
+
+        pwddetail c;
+        const char *sep = " ";
+        int i, line = 1, par[ADMINPWD_MAXPAR];
+        char *l, *p = buf;
+        logline(ACLOG_VERBOSE,"reading admin passwords '%s'", filename);
+        while(p < buf + filelen)
+        {
+            l = p; p += strlen(p) + 1;
+            l = strtok(l, sep);
+            if(l)
+            {
+                copystring(c.pwd, l);
+                par[0] = 0;  // default values
+                for(i = 0; i < ADMINPWD_MAXPAR; i++)
+                {
+                    if((l = strtok(NULL, sep)) != NULL) par[i] = atoi(l);
+                    else break;
+                }
+                //if(i > 0)
+                {
+                    c.line = line;
+                    c.denyadmin = par[0] > 0;
+                    adminpwds.add(c);
+                    logline(ACLOG_VERBOSE,"line%4d: %s %d", c.line, hiddenpwd(c.pwd), c.denyadmin ? 1 : 0);
+                }
+            }
+            line++;
+        }
+        DELETEA(buf);
+        logline(ACLOG_INFO,"read %d admin passwords from '%s'", adminpwds.length() - staticpasses, filename);
+    }
+
+    bool check(const char *name, const char *pwd, int salt, pwddetail *detail = NULL, enet_uint32 address = 0)
+    {
+        bool found = false;
+        if (address && passguy == address)
+        {
+            if (passtime + 3000 > servmillis || ( passtries > 5 && passtime + 10000 > servmillis ))
+            {
+                passtries++;
+                passtime = servmillis;
+                return false;
+            }
+            else
+            {
+                if ( passtime + 60000 < servmillis ) passtries = 0;
+            }
+            passtries++;
+        }
+        else
+        {
+            passtries = 0;
+        }
+        passguy = address;
+        passtime = servmillis;
+        loopv(adminpwds)
+        {
+            if(!strcmp(genpwdhash(name, adminpwds[i].pwd, salt), pwd))
+            {
+                if(detail) *detail = adminpwds[i];
+                found = true;
+                break;
+            }
+        }
+        return found;
+    }
+};
+
+// serverinfo_en.txt, motd_en.txt
+
+#define MAXINFOLINELEN 100  // including color codes
+
+struct serverinfofile
+{
+    struct serverinfotext { const char *type; char lang[3]; char *info; int lastcheck; };
+    vector<serverinfotext> serverinfotexts;
+    const char *infobase, *motdbase;
+
+    void init(const char *info, const char *motd) { infobase = info; motdbase = motd; }
+
+    char *readinfofile(const char *fnbase, const char *lang)
+    {
+        defformatstring(fname)("%s_%s.txt", fnbase, lang);
+        path(fname);
+        int len, n;
+        char *c, *s, *t, *buf = loadfile(fname, &len);
+        if(!buf) return NULL;
+        char *nbuf = new char[len + 2];
+        for(t = nbuf, s = strtok(buf, "\n\r"); s; s = strtok(NULL, "\n\r"))
+        {
+            c = strstr(s, "//");
+            if(c) *c = '\0'; // strip comments
+            for(n = (int)strlen(s) - 1; n >= 0 && s[n] == ' '; n--) s[n] = '\0'; // strip trailing blanks
+            filterrichtext(t, s + strspn(s, " "), MAXINFOLINELEN); // skip leading blanks
+            n = (int)strlen(t);
+            if(n) t += n + 1;
+        }
+        *t = '\0';
+        DELETEA(buf);
+        if(!*nbuf) DELETEA(nbuf);
+        logline(ACLOG_DEBUG,"read file \"%s\"", fname);
+        return nbuf;
+    }
+
+    const char *getinfocache(const char *fnbase, const char *lang)
+    {
+        serverinfotext sn = { fnbase, { 0, 0, 0 }, NULL, 0} , *s = &sn;
+        filterlang(sn.lang, lang);
+        if(!sn.lang[0]) return NULL;
+        loopv(serverinfotexts)
+        {
+            serverinfotext &si = serverinfotexts[i];
+            if(si.type == s->type && !strcmp(si.lang, s->lang))
+            {
+                if(servmillis - si.lastcheck > (si.info ? 15 : 45) * 60 * 1000)
+                { // re-read existing files after 15 minutes; search missing again after 45 minutes
+                    DELETEA(si.info);
+                    s = &si;
+                }
+                else return si.info;
+            }
+        }
+        s->info = readinfofile(fnbase, lang);
+        s->lastcheck = servmillis;
+        if(s == &sn) serverinfotexts.add(*s);
+        if(fnbase == motdbase && s->info)
+        {
+            char *c = s->info;
+            while(*c) { c += strlen(c); if(c[1]) *c++ = '\n'; }
+            if(strlen(s->info) > MAXSTRLEN) s->info[MAXSTRLEN] = '\0'; // keep MOTD at sane lengths
+        }
+        return s->info;
+    }
+
+    const char *getinfo(const char *lang)
+    {
+        return getinfocache(infobase, lang);
+    }
+
+    const char *getmotd(const char *lang)
+    {
+        const char *motd;
+        if(*lang && (motd = getinfocache(motdbase, lang))) return motd;
+        return getinfocache(motdbase, "en");
+    }
+};
+
+struct killmessagesfile : serverconfigfile
+{
+    void init(const char *name) { serverconfigfile::init(name); }
+    void read()
+    {
+        if(getfilesize(filename) == filelen) return;
+        if(!load()) return;
+
+        char *l, *s, *p = buf;
+        const char *sep = " \"";
+        int line = 0;
+        logline(ACLOG_VERBOSE,"reading kill messages file '%s'", filename);
+        while(p < buf + filelen)
+        {
+            l = p; p += strlen(p) + 1;
+            l = strtok(l, sep);
+
+            char *message;
+            if(l)
+            {
+                s = strtok(NULL, sep);
+                bool fragmsg = !strcmp(l, "fragmessage");
+                bool gibmsg = !strcmp(l, "gibmessage");
+                if(s && (fragmsg || gibmsg))
+                {
+                    int errors = 0;
+                    int gun = atoi(s);
+
+                    s += strlen(s) + 1;
+                    while(s[0] == ' ') s++;
+                    int hasquotes = strspn(s, "\"");
+                    s += hasquotes;
+                    message = s;
+                    const char *seps = "\" \n", *end = NULL;
+                    char cursep;
+                    while( (cursep = *seps++) != '\0')
+                    {
+                        if(cursep == '"' && !hasquotes) continue;
+                        end = strchr(message, cursep);
+                        if(end) break;
+                    }
+                    if(end) message[end-message] = '\0';
+
+                    if(gun < 0 || gun >= NUMGUNS)
+                    {
+                        logline(ACLOG_INFO, " error in line %i, invalid gun : %i", line, gun);
+                        errors++;
+                    }
+                    if(strlen(message)>MAXKILLMSGLEN)
+                    {
+                        logline(ACLOG_INFO, " error in line %i, too long message : string length is %i, max. allowed is %i", line, strlen(message), MAXKILLMSGLEN);
+                        errors++;
+                    }
+                    if(!errors)
+                    {
+                        if(fragmsg)
+                        {
+                            copystring(killmessages[0][gun], message, MAXKILLMSGLEN);
+                            logline(ACLOG_VERBOSE, " added msg '%s' for frags with weapon %i ", message, gun);
+                        }
+                        else
+                        {
+                            copystring(killmessages[1][gun], message, MAXKILLMSGLEN);
+                            logline(ACLOG_VERBOSE, " added msg '%s' for gibs with weapon %i ", message, gun);
+                        }
+                    }
+                    s = NULL;
+                    line++;
+                }
+            }
+        }
+    }
+};
 // 2011feb05:ft: quitproc
-#include "signal.h"
+#include <signal.h>
 // config
-servercontroller *svcctrl = NULL;
+static servercontroller *svcctrl = NULL;
 servercommandline scl;
-servermaprot maprot;
-serveripblacklist ipblacklist;
-servernickblacklist nickblacklist;
-serverforbiddenlist forbiddenlist;
-serverpasswords passwords;
-serverinfofile infofiles;
-killmessagesfile killmsgs;
+static servermaprot maprot;
+static serveripblacklist ipblacklist;
+static servernickblacklist nickblacklist;
+static serverforbiddenlist forbiddenlist;
+static serverpasswords passwords;
+static serverinfofile infofiles;
+static killmessagesfile killmsgs;
 
 // server state
-bool isdedicated = false;
-ENetHost *serverhost = NULL;
+static ENetHost *serverhost = NULL;
 
 int laststatus = 0, servmillis = 0, lastfillup = 0;
 
-vector<client *> clients;
-vector<worldstate *> worldstates;
-vector<savedscore> savedscores;
-vector<ban> bans;
-vector<demofile> demofiles;
+static vector<client *> clients;
+static vector<worldstate *> worldstates;
+static vector<savedscore> savedscores;
+static vector<ban> bans;
+static vector<demofile> demofiles;
 
-int mastermode = MM_OPEN;
+static int mastermode = MM_OPEN;
 static bool autoteam = true;
-int matchteamsize = 0;
+static int matchteamsize = 0;
 
-long int incoming_size = 0;
+static long int incoming_size = 0;
 
 static bool forceintermission = false;
 
 string servdesc_current;
-ENetAddress servdesc_caller;
-bool custom_servdesc = false;
+static ENetAddress servdesc_caller;
+static bool custom_servdesc = false;
 
 // current game
-string smapname, nextmapname;
-int smode = 0, nextgamemode;
+static string nextmapname;
 int interm = 0;
 static int minremain = 0, gamemillis = 0, gamelimit = 0, /*lmsitemtype = 0,*/ nextsendscore = 0;
-mapstats smapstats;
-vector<server_entity> sents;
-char *maplayout = NULL, *testlayout = NULL;
+static vector<server_entity> sents;
+
 int maplayout_factor, testlayout_factor, maplayoutssize;
-servermapbuffer mapbuffer;
+static servermapbuffer mapbuffer;
 
 // cmod
 char *global_name;
 int totalclients = 0;
-int cn2boot;
-int servertime = 0, serverlagged = 0;
+static int cn2boot;
+static int servertime = 0, serverlagged = 0;
 
 bool valid_client(int cn)
 {
     return clients.inrange(cn) && clients[cn]->type != ST_EMPTY;
 }
 
-void cleanworldstate(ENetPacket *packet)
+static void cleanworldstate(ENetPacket *packet)
 {
    loopv(worldstates)
    {
@@ -88,7 +1622,7 @@ void cleanworldstate(ENetPacket *packet)
    }
 }
 
-void sendpacket(int n, int chan, ENetPacket *packet, int exclude, bool demopacket)
+static void sendpacket(int n, int chan, ENetPacket *packet, int exclude, bool demopacket)
 {
     if(n<0)
     {
@@ -112,7 +1646,7 @@ void sendpacket(int n, int chan, ENetPacket *packet, int exclude, bool demopacke
 
 static bool reliablemessages = false;
 
-bool buildworldstate()
+static bool buildworldstate()
 {
     static struct { int posoff, poslen, msgoff, msglen; } pkt[MAXCLIENTS];
     worldstate &ws = *new worldstate;
@@ -195,32 +1729,32 @@ bool buildworldstate()
     }
 }
 
-int countclients(int type, bool exclude = false)
+static int countclients(int type, bool exclude = false)
 {
     int num = 0;
     loopv(clients) if((clients[i]->type!=type)==exclude) num++;
     return num;
 }
 
-int numclients() { return countclients(ST_EMPTY, true); }
-int numlocalclients() { return countclients(ST_LOCAL); }
-int numnonlocalclients() { return countclients(ST_TCPIP); }
+static int numclients() { return countclients(ST_EMPTY, true); }
+static int numlocalclients() { return countclients(ST_LOCAL); }
+static int numnonlocalclients() { return countclients(ST_TCPIP); }
 
-int numauthedclients()
+static int numauthedclients()
 {
     int num = 0;
     loopv(clients) if(clients[i]->type!=ST_EMPTY && clients[i]->isauthed) num++;
     return num;
 }
 
-int numactiveclients()
+static int numactiveclients()
 {
     int num = 0;
     loopv(clients) if(clients[i]->type!=ST_EMPTY && clients[i]->isauthed && clients[i]->isonrightmap && team_isactive(clients[i]->team)) num++;
     return num;
 }
 
-int *numteamclients(int exclude = -1)
+static int *numteamclients(int exclude = -1)
 {
     static int num[TEAM_NUM];
     loopi(TEAM_NUM) num[i] = 0;
@@ -228,14 +1762,14 @@ int *numteamclients(int exclude = -1)
     return num;
 }
 
-int sendservermode(bool send = true)
+static int sendservermode(bool send = true)
 {
     int sm = (autoteam ? AT_ENABLED : AT_DISABLED) | ((mastermode & MM_MASK) << 2) | (matchteamsize << 4);
     if(send) sendf(-1, 1, "ri2", SV_SERVERMODE, sm);
     return sm;
 }
 
-void changematchteamsize(int newteamsize)
+static void changematchteamsize(int newteamsize)
 {
     if(newteamsize < 0) return;
     if(matchteamsize != newteamsize)
@@ -256,7 +1790,7 @@ void changematchteamsize(int newteamsize)
     }
 }
 
-void changemastermode(int newmode)
+static void changemastermode(int newmode)
 {
     if(mastermode != newmode)
     {
@@ -274,7 +1808,7 @@ void changemastermode(int newmode)
     }
 }
 
-int findcnbyaddress(ENetAddress *address)
+static int findcnbyaddress(ENetAddress *address)
 {
     loopv(clients)
     {
@@ -284,7 +1818,7 @@ int findcnbyaddress(ENetAddress *address)
     return -1;
 }
 
-savedscore *findscore(client &c, bool insert)
+static savedscore *findscore(client &c, bool insert)
 {
     if(c.type!=ST_TCPIP) return NULL;
     enet_uint32 mask = ENET_HOST_TO_NET_32(mastermode == MM_MATCH ? 0xFFFF0000 : 0xFFFFFFFF); // in match mode, reconnecting from /16 subnet is allowed
@@ -323,7 +1857,7 @@ void restoreserverstate(vector<entity> &ents)   // hack: called from savegame co
     }
 }
 
-void sendf(int cn, int chan, const char *format, ...)
+static void sendf(int cn, int chan, const char *format, ...)
 {
     int exclude = -1;
     bool reliable = false;
@@ -363,7 +1897,7 @@ void sendf(int cn, int chan, const char *format, ...)
     sendpacket(cn, chan, p.finalize(), exclude);
 }
 
-void sendextras()
+static void sendextras()
 {
     if ( gamemillis < nextsendscore ) return;
     int count = 0, list[MAXCLIENTS];
@@ -399,12 +1933,12 @@ void sendextras()
     sendpacket(-1, 1, p.finalize());
 }
 
-void sendservmsg(const char *msg, int cn = -1)
+static void sendservmsg(const char *msg, int cn = -1)
 {
     sendf(cn, 1, "ris", SV_SERVMSG, msg);
 }
 
-void sendspawn(client *c)
+static void sendspawn(client *c)
 {
     if(team_isspect(c->team)) return;
     clientstate &gs = c->state;
@@ -419,11 +1953,11 @@ void sendspawn(client *c)
 }
 
 // demo
-stream *demotmp = NULL, *demorecord = NULL, *demoplayback = NULL;
-bool recordpackets = false;
-int nextplayback = 0;
+static stream *demotmp = NULL, *demorecord = NULL, *demoplayback = NULL;
+static bool recordpackets = false;
+static int nextplayback = 0;
 
-void writedemo(int chan, void *data, int len)
+static void writedemo(int chan, void *data, int len)
 {
     if(!demorecord) return;
     int stamp[3] = { gamemillis, chan, len };
@@ -432,7 +1966,7 @@ void writedemo(int chan, void *data, int len)
     demorecord->write(data, len);
 }
 
-void recordpacket(int chan, void *data, int len)
+static void recordpacket(int chan, void *data, int len)
 {
     if(recordpackets) writedemo(chan, data, len);
 }
@@ -555,7 +2089,7 @@ const char *getDemoFilename(int gmode, int mplay, int mdrop, int tstamp, char *s
 #undef DEMOFORMAT
 #undef DEMOTSFORMAT
 
-void enddemorecord()
+static void enddemorecord()
 {
     if(!demorecord) return;
 
@@ -626,7 +2160,7 @@ void enddemorecord()
     }
 }
 
-void setupdemorecord()
+static void setupdemorecord()
 {
     if(numlocalclients() || !m_mp(gamemode) || gamemode == GMODE_COOPEDIT) return;
 
@@ -676,7 +2210,7 @@ void setupdemorecord()
     writedemo(1, p.buf, p.len);
 }
 
-void listdemos(int cn)
+static void listdemos(int cn)
 {
     packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
     putint(p, SV_SENDDEMOLIST);
@@ -702,9 +2236,9 @@ static void cleardemos(int n)
     }
 }
 
-bool sending_demo = false;
+static bool sending_demo = false;
 
-void senddemo(int cn, int num)
+static void senddemo(int cn, int num)
 {
     client *cl = cn>=0 ? clients[cn] : NULL;
     bool is_admin = (cl && cl->role == CR_ADMIN);
@@ -760,7 +2294,7 @@ void enddemoplayback()
     loopv(clients) sendwelcome(clients[i]);
 }
 
-void setupdemoplayback()
+static void setupdemoplayback()
 {
     demoheader hdr;
     string msg;
@@ -800,7 +2334,7 @@ void setupdemoplayback()
     lilswap(&nextplayback, 1);
 }
 
-void readdemo()
+static void readdemo()
 {
     if(!demoplayback) return;
     while(gamemillis>=nextplayback)
@@ -844,7 +2378,7 @@ struct sflaginfo
     sflaginfo() { actor_cn = -1; }
 } sflaginfos[2];
 
-void putflaginfo(packetbuf &p, int flag)
+static void putflaginfo(packetbuf &p, int flag)
 {
     sflaginfo &f = sflaginfos[flag];
     putint(p, SV_FLAGINFO);
@@ -861,7 +2395,7 @@ void putflaginfo(packetbuf &p, int flag)
     }
 }
 
-inline void send_item_list(packetbuf &p)
+static inline void send_item_list(packetbuf &p)
 {
     putint(p, SV_ITEMLIST);
     loopv(sents) if(sents[i].spawned) putint(p, i);
@@ -869,9 +2403,652 @@ inline void send_item_list(packetbuf &p)
     if(m_flags) loopi(2) putflaginfo(p, i);
 }
 
-#include "serverchecks.h"
 
-bool flagdistance(sflaginfo &f, int cn)
+
+
+
+static inline bool is_lagging(client *cl)
+{
+    return ( cl->spj > 50 || cl->ping > 500 || cl->ldt > 80 ); // do not change this except if you really know what are you doing
+}
+
+static inline bool outside_border(vec &po)
+{
+    return (po.x < 0 || po.y < 0 || po.x >= maplayoutssize || po.y >= maplayoutssize);
+}
+
+static inline void checkclientpos(client *cl)
+{
+    vec &po = cl->state.o;
+    if( outside_border(po) || maplayout[((int) po.x) + (((int) po.y) << maplayout_factor)] > po.z + 3)
+    {
+        if(gamemillis > 10000 && (servmillis - cl->connectmillis) > 10000) cl->mapcollisions++;
+        if(cl->mapcollisions && !(cl->mapcollisions % 25))
+        {
+            logline(ACLOG_INFO, "[%s] %s is colliding with the map", cl->hostname, cl->name);
+        }
+    }
+}
+
+#define POW2XY(A,B) (pow2(A.x-B.x)+pow2(A.y-B.y))
+
+static inline void addban(client *cl, int reason, int type = BAN_AUTO)
+{
+    if(!cl) return;
+    ban b = { cl->peer->address, servmillis+scl.ban_time, type };
+    bans.add(b);
+    disconnect_client(cl->clientnum, reason);
+}
+
+#ifdef ACAC
+#include "anticheat.h"
+#endif
+
+#define MINELINE 50
+
+//FIXME
+/* There are smarter ways to implement this function, but most probably they will be very complex */
+static int getmaxarea(int inversed_x, int inversed_y, int transposed, int ml_factor, char *ml)
+{
+    int ls = (1 << ml_factor);
+    int xi = 0, oxi = 0, xf = 0, oxf = 0, fx = 0, fy = 0;
+    int area = 0, maxarea = 0;
+    bool sav_x = false, sav_y = false;
+
+    if (transposed) fx = ml_factor;
+    else fy = ml_factor;
+
+    // walk on x for each y
+    for ( int y = (inversed_y ? ls-1 : 0); (inversed_y ? y >= 0 : y < ls); (inversed_y ? y-- : y++) ) {
+
+    /* Analyzing each cube of the line */
+        for ( int x = (inversed_x ? ls-1 : 0); (inversed_x ? x >= 0 : x < ls); (inversed_x ? x-- : x++) ) {
+            if ( ml[ ( x << fx ) + ( y << fy ) ] != 127 ) {      // if it is not solid
+                if ( sav_x ) {                                          // if the last cube was saved
+                    xf = x;                                             // new end for this line
+                }
+                else {
+                    xi = x;                                             // new begin of the line
+                    sav_x = true;                                       // accumulating cubes from now
+                }
+            } else {                                    // solid
+                if ( xf - xi > MINELINE ) break;                        // if the empty line is greater than a minimum, get out
+                sav_x = false;                                          // stop the accumulation of cubes
+            }
+        }
+
+    /* Analyzing this line with the previous one */
+        if ( xf - xi > MINELINE ) {                                     // if the line has the minimun threshold of emptiness
+            if ( sav_y ) {                                              // if the last line was saved
+                if ( 2*oxi + MINELINE < 2*xf &&
+                     2*xi + MINELINE < 2*oxf ) {                        // if the last line intersect this one
+                    area += xf - xi;
+                } else {
+                    oxi = xi;                                           // new area vertices
+                    oxf = xf;
+                }
+            }
+            else {
+                oxi = xi;
+                oxf = xf;
+                sav_y = true;                                           // accumulating lines from now
+            }
+        } else {
+            sav_y = false;                                              // stop the accumulation of lines
+            if (area > maxarea) maxarea = area;                         // new max area
+            area=0;
+        }
+
+        sav_x = false;                                                  // reset x
+        xi = xf = 0;
+    }
+    return maxarea;
+}
+
+int checkarea(int maplayout_factor, char *maplayout)
+{
+    int area = 0, maxarea = 0;
+    for (int i=0; i < 8; i++) {
+        area = getmaxarea((i & 1),(i & 2),(i & 4), maplayout_factor, maplayout);
+        if ( area > maxarea ) maxarea = area;
+    }
+    return maxarea;
+}
+
+/**
+This part is related to medals system. WIP
+ */
+
+static const char * medal_messages[] = { "defended the flag", "covered the flag stealer", "defended the dropped flag", "covered the flag keeper", "covered teammate" };
+enum { CTFLDEF, CTFLCOV, HTFLDEF, HTFLCOV, COVER, MEDALMESSAGENUM };
+static inline void print_medal_messages(client *c, int n)
+{
+    if (n<0 || n>=MEDALMESSAGENUM) return;
+    logline(ACLOG_VERBOSE, "[%s] %s %s", c->hostname, c->name, medal_messages[n]);
+}
+
+static inline void addpt(client *c, int points, int n = -1) {
+    c->state.points += points;
+    c->md.dpt += points;
+    c->md.updated = true;
+    c->md.upmillis = gamemillis + 240; // about 2 AR shots
+    print_medal_messages(c,n);
+}
+
+/** cnumber is the number of players in the game, at a max value of 12 */
+#define CTFPICKPT     cnumber                      // player picked the flag (ctf)
+#define CTFDROPPT    -cnumber                      // player dropped the flag to other player (probably)
+#define HTFLOSTPT  -2*cnumber                      // penalty
+#define CTFLOSTPT     cnumber*distance/100         // bonus: 1/4 of the flag score bonus
+#define CTFRETURNPT   cnumber                      // flag return
+#define CTFSCOREPT   (cnumber*distance/25+10)      // flag score
+#define HTFSCOREPT   (cnumber*4+10)
+#define KTFSCOREPT   (cnumber*2+10)
+#define COMBOPT       5                            // player frags with combo
+#define REPLYPT       2                            // reply success
+#define TWDONEPT      5                            // team work done
+#define CTFLDEFPT     cnumber                      // player defended the flag in the base (ctf)
+#define CTFLCOVPT     cnumber*2                    // player covered the flag stealer (ctf)
+#define HTFLDEFPT     cnumber                      // player defended a droped flag (htf)
+#define HTFLCOVPT     cnumber*3                    // player covered the flag keeper (htf)
+#define COVERPT       cnumber*2                    // player covered teammate
+#define DEATHPT      -4                            // player died
+#define BONUSPT       target->state.points/400     // bonus (for killing high level enemies :: beware with exponential behavior!)
+#define FLBONUSPT     target->state.points/300     // bonus if flag team mode
+#define TMBONUSPT     target->state.points/200     // bonus if team mode (to give some extra reward for playing tdm modes)
+#define HTFFRAGPT     cnumber/2                    // player frags while carrying the flag
+#define CTFFRAGPT   2*cnumber                      // player frags the flag stealer
+#define FRAGPT        10                           // player frags (normal)
+#define HEADSHOTPT    15                           // player gibs with head shot
+#define KNIFEPT       20                           // player gibs with the knife
+#define SHOTGPT       12                           // player gibs with the shotgun
+#define TKPT         -20                           // player tks
+#define FLAGTKPT     -2*(10+cnumber)               // player tks the flag keeper/stealer
+
+static void flagpoints(client *c, int message)
+{
+    float distance = 0;
+    int cnumber = totalclients < 13 ? totalclients : 12;
+    switch (message)
+    {
+        case FM_PICKUP:
+            c->md.flagpos.x = c->state.o.x;
+            c->md.flagpos.y = c->state.o.y;
+            c->md.flagmillis = servmillis;
+            if (m_ctf) addpt(c, CTFPICKPT);
+            break;
+        case FM_DROP:
+            if (m_ctf) addpt(c, CTFDROPPT);
+            break;
+        case FM_LOST:
+            if (m_htf) addpt(c, HTFLOSTPT);
+            else if (m_ctf) {
+                distance = sqrt(POW2XY(c->state.o,c->md.flagpos));
+                if (distance > 200) distance = 200;                   // ~200 is the distance between the flags in ac_depot
+                addpt(c, CTFLOSTPT);
+            }
+            break;
+        case FM_RETURN:
+            addpt(c, CTFRETURNPT);
+            break;
+        case FM_SCORE:
+            if (m_ctf) {
+                distance = sqrt(POW2XY(c->state.o,c->md.flagpos));
+                if (distance > 200) distance = 200;
+#ifdef ACAC
+                if ( validflagscore(distance,c) )
+#endif
+                    addpt(c, CTFSCOREPT);
+            } else addpt(c, HTFSCOREPT);
+            break;
+        case FM_KTFSCORE:
+            addpt(c, KTFSCOREPT);
+            break;
+        default:
+            break;
+    }
+}
+
+
+static inline int minhits2combo(int gun)
+{
+    switch (gun)
+    {
+        case GUN_SUBGUN:
+        case GUN_AKIMBO:
+            return 4;
+        case GUN_GRENADE:
+        case GUN_ASSAULT:
+            return 3;
+        default:
+            return 2;
+    }
+}
+
+static void checkcombo(client *target, client *actor, int damage, int gun)
+{
+    int diffhittime = servmillis - actor->md.lasthit;
+    actor->md.lasthit = servmillis;
+    if ((gun == GUN_SHOTGUN || gun == GUN_GRENADE) && damage < 20)
+    {
+        actor->md.lastgun = gun;
+        return;
+    }
+
+    if ( diffhittime < 750 ) {
+        if ( gun == actor->md.lastgun )
+        {
+            if ( diffhittime * 2 < guns[gun].attackdelay * 3 )
+            {
+                actor->md.combohits++;
+                actor->md.combotime+=diffhittime;
+                actor->md.combodamage+=damage;
+                int mh2c = minhits2combo(gun);
+                if ( actor->md.combohits > mh2c && actor->md.combohits % mh2c == 1 )
+                {
+                    if (actor->md.combo < 5) actor->md.combo++;
+                    actor->md.ncombos++;
+                }
+            }
+        }
+        else
+        {
+            switch (gun)
+            {
+                case GUN_KNIFE:
+                case GUN_PISTOL:
+                    if ( guns[actor->md.lastgun].isauto ) break;
+                case GUN_SNIPER:
+                    if ( actor->md.lastgun > GUN_PISTOL ) break;
+                default:
+                    actor->md.combohits++;
+                    actor->md.combotime+=diffhittime;
+                    actor->md.combodamage+=damage;
+                    if (actor->md.combo < 5) actor->md.combo++;
+                    actor->md.ncombos++;
+                    break;
+            }
+        }
+    }
+    else
+    {
+        actor->md.combo = 0;
+        actor->md.combofrags = 0;
+        actor->md.combotime = 0;
+        actor->md.combodamage = 0;
+        actor->md.combohits = 0;
+    }
+    actor->md.lastgun = gun;
+}
+
+#define COVERDIST 2000 // about 45 cubes
+#define REPLYDIST 8000 // about 90 cubes
+static float coverdist = COVERDIST;
+
+static int checkteamrequests(int sender)
+{
+    int dtime, besttime = -1;
+    int bestid = -1;
+    client *ant = clients[sender];
+    loopv(clients) {
+        client *prot = clients[i];
+        if ( i!=sender && prot->type != ST_EMPTY && prot->team == ant->team &&
+             prot->state.state == CS_ALIVE && prot->md.askmillis > gamemillis && prot->md.ask >= 0 ) {
+            float dist = POW2XY(ant->state.o,prot->state.o);
+            if ( dist < REPLYDIST && (dtime=prot->md.askmillis-gamemillis) > besttime) {
+                bestid = i;
+                besttime = dtime;
+            }
+        }
+    }
+    if ( besttime >= 0 ) return bestid;
+    return -1;
+}
+
+/** WIP */
+static void checkteamplay(int s, int sender)
+{
+    client *actor = clients[sender];
+
+    if ( actor->state.state != CS_ALIVE ) return;
+    switch(s){
+        case S_IMONDEFENSE: // informs
+            actor->md.linkmillis = gamemillis + 20000;
+            actor->md.linkreason = s;
+            break;
+        case S_COVERME: // demands
+        case S_STAYTOGETHER:
+        case S_STAYHERE:
+            actor->md.ask = s;
+            actor->md.askmillis = gamemillis + 5000;
+            break;
+        case S_AFFIRMATIVE: // replies
+        case S_ALLRIGHTSIR:
+        case S_YES:
+        {
+            int id = checkteamrequests(sender);
+            if ( id >= 0 ) {
+                client *sgt = clients[id];
+                actor->md.linked = id;
+                if ( actor->md.linkmillis < gamemillis ) addpt(actor,REPLYPT);
+                actor->md.linkmillis = gamemillis + 30000;
+                actor->md.linkreason = sgt->md.ask;
+                sendf(actor->clientnum, 1, "ri2", SV_HUDEXTRAS, HE_NUM+id);
+                switch( actor->md.linkreason ) { // check demands
+                    case S_STAYHERE:
+                        actor->md.pos = sgt->state.o;
+                        addpt(sgt,REPLYPT);
+                        break;
+                }
+            }
+            break;
+        }
+    }
+}
+
+static void computeteamwork(int team, int exclude) // testing
+{
+    loopv(clients)
+    {
+        client *actor = clients[i];
+        if ( i == exclude || actor->type == ST_EMPTY || actor->team != team || actor->state.state != CS_ALIVE || actor->md.linkmillis < gamemillis ) continue;
+        vec position;
+        bool teamworkdone = false;
+        switch( actor->md.linkreason )
+        {
+            case S_IMONDEFENSE:
+                position = actor->spawnp;
+                teamworkdone = true;
+                break;
+            case S_STAYTOGETHER:
+                if ( valid_client(actor->md.linked) ) position = clients[actor->md.linked]->state.o;
+                teamworkdone = true;
+                break;
+            case S_STAYHERE:
+                position = actor->md.pos;
+                teamworkdone = true;
+                break;
+        }
+        if ( teamworkdone )
+        {
+            float dist = POW2XY(actor->state.o,position);
+            if (dist < COVERDIST)
+            {
+                addpt(actor,TWDONEPT);
+                sendf(actor->clientnum, 1, "ri2", SV_HUDEXTRAS, HE_TEAMWORK);
+            }
+        }
+    }
+}
+
+static float a2c = 0, c2t = 0, a2t = 0; // distances: actor to covered, covered to target and actor to target
+
+static inline bool testcover(int msg, int factor, client *actor)
+{
+    if ( a2c < coverdist && c2t < coverdist && a2t < coverdist )
+    {
+        sendf(actor->clientnum, 1, "ri2", SV_HUDEXTRAS, msg);
+        addpt(actor, factor);
+        actor->md.ncovers++;
+        return true;
+    }
+    return false;
+}
+
+#define CALCCOVER(C) \
+    a2c = POW2XY(actor->state.o,C);\
+    c2t = POW2XY(C,target->state.o);\
+    a2t = POW2XY(actor->state.o,target->state.o)
+
+static bool validlink(client *actor, int cn)
+{
+    return actor->md.linked >= 0 && actor->md.linked == cn && gamemillis < actor->md.linkmillis && valid_client(actor->md.linked);
+}
+
+/** WIP */
+static void checkcover(client *target, client *actor)
+{
+    int team = actor->team;
+    int oteam = team_opposite(team);
+
+    bool covered = false;
+    int coverid = -1;
+
+    int cnumber = totalclients < 13 ? totalclients : 12;
+
+    if ( m_flags ) {
+        sflaginfo &f = sflaginfos[team];
+        sflaginfo &of = sflaginfos[oteam];
+
+        if ( m_ctf )
+        {
+            if ( f.state == CTFF_INBASE )
+            {
+                CALCCOVER(f);
+                if ( testcover(HE_FLAGDEFENDED, CTFLDEFPT, actor) ) print_medal_messages(actor,CTFLDEF);
+            }
+            if ( of.state == CTFF_STOLEN && actor->clientnum != of.actor_cn )
+            {
+                covered = true; coverid = of.actor_cn;
+                CALCCOVER(clients[of.actor_cn]->state.o);
+                if ( testcover(HE_FLAGCOVERED, CTFLCOVPT, actor) ) print_medal_messages(actor,CTFLCOV);
+            }
+        }
+        else if ( m_htf )
+        {
+            if ( actor->clientnum != f.actor_cn )
+            {
+                if ( f.state == CTFF_DROPPED )
+                {
+                    struct { short x, y; } nf;
+                    nf.x = f.pos[0]; nf.y = f.pos[1];
+                    CALCCOVER(nf);
+                    if ( testcover(HE_FLAGDEFENDED, HTFLDEFPT, actor) ) print_medal_messages(actor,HTFLDEF);
+                }
+                if ( f.state == CTFF_STOLEN )
+                {
+                    covered = true; coverid = f.actor_cn;
+                    CALCCOVER(clients[f.actor_cn]->state.o);
+                    if ( testcover(HE_FLAGCOVERED, HTFLCOVPT, actor) ) print_medal_messages(actor,HTFLCOV);
+                }
+            }
+        }
+    }
+
+    if ( !(covered && actor->md.linked==coverid) && validlink(actor,actor->md.linked) )
+    {
+        CALCCOVER(clients[actor->md.linked]->state.o);
+        if ( testcover(HE_COVER, COVERPT, actor) ) print_medal_messages(actor,COVER);
+    }
+
+}
+
+#undef CALCCOVER
+
+/** WiP */
+static void checkfrag(client *target, client *actor, int gun, bool gib)
+{
+    int targethasflag = clienthasflag(target->clientnum);
+    int actorhasflag = clienthasflag(actor->clientnum);
+    int cnumber = totalclients < 13 ? totalclients : 12;
+    addpt(target,DEATHPT);
+    if(target!=actor) {
+        if(!isteam(target->team, actor->team)) {
+
+            if (m_teammode) {
+                if(!m_flags) addpt(actor, TMBONUSPT);
+                else addpt(actor, FLBONUSPT);
+
+                checkcover (target, actor);
+                if ( m_htf && actorhasflag >= 0 ) addpt(actor, HTFFRAGPT);
+
+                if ( m_ctf && targethasflag >= 0 ) {
+                    addpt(actor, CTFFRAGPT);
+                }
+            }
+            else addpt(actor, BONUSPT);
+
+            if (gib && gun != GUN_GRENADE) {
+                if ( gun == GUN_SNIPER ) {
+                    addpt(actor, HEADSHOTPT);
+                    actor->md.nhs++;
+                }
+                else if ( gun == GUN_KNIFE ) addpt(actor, KNIFEPT);
+                else if ( gun == GUN_SHOTGUN ) addpt(actor, SHOTGPT);
+            }
+            else addpt(actor, FRAGPT);
+
+            if ( actor->md.combo ) {
+                actor->md.combofrags++;
+                addpt(actor,COMBOPT);
+                actor->md.combosend = true;
+            }
+
+        } else {
+
+            if ( targethasflag >= 0 ) addpt(actor, FLAGTKPT);
+            else addpt(actor, TKPT);
+
+        }
+    }
+}
+
+static int next_afk_check = 200;
+
+/* this function is managed to the PUBS, id est, many people playing in an open server */
+static void check_afk()
+{
+    next_afk_check = servmillis + 7 * 1000;
+    /* if we have few people (like 2x2), or it is not a teammode with the server not full: do nothing! */
+    if ( totalclients < 5 || ( totalclients < scl.maxclients && !m_teammode)  ) return;
+    loopv(clients)
+    {
+        client &c = *clients[i];
+        if ( c.type != ST_TCPIP || c.connectmillis + 60 * 1000 > servmillis ||
+             c.inputmillis + scl.afk_limit > servmillis || clienthasflag(c.clientnum) != -1 ) continue;
+        if ( ( c.state.state == CS_DEAD && !m_arena && c.state.lastdeath + 45 * 1000 < gamemillis) ||
+             ( c.state.state == CS_ALIVE && c.upspawnp ) /*||
+             ( c.state.state == CS_SPECTATE && totalclients >= scl.maxclients )  // only kick spectator if server is full - 2011oct16:flowtron: mmh, that seems reasonable enough .. still, kicking spectators for inactivity seems harsh! disabled ATM, kick them manually if you must.
+             */
+            )
+        {
+            logline(ACLOG_INFO, "[%s] %s %s", c.hostname, c.name, "is afk");
+            defformatstring(msg)("%s is afk", c.name);
+            sendservmsg(msg);
+            disconnect_client(c.clientnum, DISC_AFK);
+        }
+    }
+}
+
+/** This function counts how much non-killing-damage the player does to any teammates
+    The damage limit is 100 hp per minute, which is about 2 tks per minute in a normal game
+    In normal games, the players go over 6 tks only in the worst cases */
+static void check_ffire(client *target, client *actor, int damage)
+{
+    if ( mastermode != MM_OPEN ) return;
+    actor->ffire += damage;
+    if ( actor->ffire > 300 && actor->ffire * 600 > gamemillis) {
+        logline(ACLOG_INFO, "[%s] %s %s", actor->hostname, actor->name, "kicked for excessive friendly fire");
+        defformatstring(msg)("%s %s", actor->name, "kicked for excessive friendly fire");
+        sendservmsg(msg);
+        disconnect_client(actor->clientnum, DISC_FFIRE);
+    }
+}
+
+static inline int check_pdist(client *c, float & dist) // pick up distance
+{
+    // ping 1000ms at max velocity can produce an error of 20 cubes
+    float delay = 9.0f + (float)c->ping * 0.02f + (float)c->spj * 0.025f; // at pj/ping 40/100, delay = 12
+    if ( dist > delay )
+    {
+        if ( dist < 1.5f * delay ) return 1;
+#ifdef ACAC
+        pickup_checks(c,dist-delay);
+#endif
+        return 2;
+    }
+    return 0;
+}
+
+/**
+If you read README.txt you must know that AC does not have cheat protection implemented.
+However this file is the sketch to a very special kind of cheat detection tools in server side.
+
+This is not based in program tricks, i.e., encryption, secret bytes, nor monitoring/scanning tools.
+
+The idea behind these cheat detections is to check (or reproduce) the client data, and verify if
+this data is expected or possible. Also, there is no need to check all clients all time, and
+one coding this kind of check must pay a special attention to the lag effect and how it can
+affect the data observed. This is not a trivial task, and probably it is the main reason why
+such tools were never implemented.
+
+This part is here for compatibility purposes.
+If you know nothing about these detections, please, just ignore it.
+*/
+
+static inline void checkmove(client *cl)
+{
+    cl->ldt = gamemillis - cl->lmillis;
+    cl->lmillis = gamemillis;
+    if ( cl->ldt < 40 ) cl->ldt = 40;
+    cl->t += cl->ldt;
+    cl->spj = (( 7 * cl->spj + cl->ldt ) >> 3);
+
+    if ( cl->input != cl->f )
+    {
+        cl->input = cl->f;
+        cl->inputmillis = servmillis;
+    }
+
+    if(maplayout) checkclientpos(cl);
+
+#ifdef ACAC
+    m_engine(cl);
+#endif
+
+    if ( !cl->upspawnp )
+    {
+        cl->spawnp = cl->state.o;
+        cl->upspawnp = true;
+        cl->spj = cl->ldt = 40;
+    }
+
+    return;
+}
+
+static inline void checkshoot(int & cn, gameevent & shot, int & hits, int & tcn)
+{
+#ifdef ACAC
+    s_engine(cn, shot, hits, tcn);
+#endif
+    return;
+}
+
+static inline void checkweapon(int & type, int & var)
+{
+#ifdef ACAC
+    w_engine(type,var);
+#endif
+    return;
+}
+
+static bool validdamage(client *&target, client *&actor, int &damage, int &gun, bool &gib)
+{
+#ifdef ACAC
+    if (!d_engine(target, actor, damage, gun, gib)) return false;
+#endif
+    return true;
+}
+
+static inline int checkmessage(client *c, int type)
+{
+#ifdef ACAC
+    type = p_engine(c,type);
+#endif
+    return type;
+}
+
+static bool flagdistance(sflaginfo &f, int cn)
 {
     if(!valid_client(cn) || m_demo) return false;
     client &c = *clients[cn];
@@ -899,7 +3076,7 @@ bool flagdistance(sflaginfo &f, int cn)
     return lagging ? false : true; // today I found a lag hacker :: Brahma, 19-oct-2010... lets test it a bit
 }
 
-void sendflaginfo(int flag = -1, int cn = -1)
+static void sendflaginfo(int flag = -1, int cn = -1)
 {
     packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
     if(flag >= 0) putflaginfo(p, flag);
@@ -907,7 +3084,7 @@ void sendflaginfo(int flag = -1, int cn = -1)
     sendpacket(cn, 1, p.finalize());
 }
 
-void flagmessage(int flag, int message, int actor, int cn = -1)
+static void flagmessage(int flag, int message, int actor, int cn = -1)
 {
     if(message == FM_KTFSCORE)
         sendf(cn, 1, "riiiii", SV_FLAGMSG, flag, message, actor, (gamemillis - sflaginfos[flag].stolentime) / 1000);
@@ -915,7 +3092,7 @@ void flagmessage(int flag, int message, int actor, int cn = -1)
         sendf(cn, 1, "riiii", SV_FLAGMSG, flag, message, actor);
 }
 
-void flagaction(int flag, int action, int actor)
+static void flagaction(int flag, int action, int actor)
 {
     if(!valid_flag(flag)) return;
     sflaginfo &f = sflaginfos[flag];
@@ -1078,7 +3255,7 @@ void flagaction(int flag, int action, int actor)
         flagmessage(flag, message, valid_client(actor) ? actor : -1);
 }
 
-int clienthasflag(int cn)
+static int clienthasflag(int cn)
 {
     if(m_flags && valid_client(cn))
     {
@@ -1087,7 +3264,7 @@ int clienthasflag(int cn)
     return -1;
 }
 
-void ctfreset()
+static void ctfreset()
 {
     int idleflag = m_ktf ? rnd(2) : -1;
     loopi(2)
@@ -1098,19 +3275,19 @@ void ctfreset()
     }
 }
 
-void sdropflag(int cn)
+static void sdropflag(int cn)
 {
     int fl = clienthasflag(cn);
     if(fl >= 0) flagaction(fl, FA_LOST, cn);
 }
 
-void resetflag(int cn)
+static void resetflag(int cn)
 {
     int fl = clienthasflag(cn);
     if(fl >= 0) flagaction(fl, FA_RESET, -1);
 }
 
-void htf_forceflag(int flag)
+static void htf_forceflag(int flag)
 {
     sflaginfo &f = sflaginfos[flag];
     int besthealth = 0;
@@ -1146,15 +3323,15 @@ void htf_forceflag(int flag)
     f.lastupdate = gamemillis;
 }
 
-int arenaround = 0, arenaroundstartmillis = 0;
+static int arenaround = 0, arenaroundstartmillis = 0;
 
 struct twoint { int index, value; };
-int cmpscore(const int *a, const int *b) { return clients[*a]->at3_score - clients[*b]->at3_score; }
-int cmptwoint(const struct twoint *a, const struct twoint *b) { return a->value - b->value; }
-vector<int> tdistrib;
-vector<twoint> sdistrib;
+static int cmpscore(const int *a, const int *b) { return clients[*a]->at3_score - clients[*b]->at3_score; }
+static int cmptwoint(const struct twoint *a, const struct twoint *b) { return a->value - b->value; }
+static vector<int> tdistrib;
+static vector<twoint> sdistrib;
 
-void distributeteam(int team)
+static void distributeteam(int team)
 {
     int numsp = team == 100 ? smapstats.spawns[2] : smapstats.spawns[team];
     if(!numsp) numsp = 30; // no spawns: try to distribute anyway
@@ -1185,7 +3362,7 @@ void distributeteam(int team)
     }
 }
 
-void distributespawns()
+static void distributespawns()
 {
     loopv(clients) if(clients[i]->type!=ST_EMPTY)
     {
@@ -1202,17 +3379,30 @@ void distributespawns()
     }
 }
 
-bool items_blocked = false;
-bool free_items(int n)
+static bool items_blocked = false;
+static bool free_items(int n)
 {
     client *c = clients[n];
     int waitspawn = min(c->ping,200) + c->state.spawn; // flowtron to Brahma: can't this be removed now? (re: rev. 5270)
     return !items_blocked && (waitspawn < gamemillis);
 }
 
-void checkitemspawns(int);
+static void checkitemspawns(int diff)
+{
+    if(!diff) return;
+    loopv(sents) if(sents[i].spawntime)
+    {
+        sents[i].spawntime -= diff;
+        if(sents[i].spawntime<=0)
+        {
+            sents[i].spawntime = 0;
+            sents[i].spawned = true;
+            sendf(-1, 1, "ri2", SV_ITEMSPAWN, i);
+        }
+    }
+}
 
-void arenacheck()
+static void arenacheck()
 {
     if(!m_arena || interm || gamemillis<arenaround || !numactiveclients()) return;
 
@@ -1290,7 +3480,7 @@ void arenacheck()
 #define SPAMCHARPERMINUTE   220  // good typist
 #define SPAMCHARINTERVAL    30   // allow 20 seconds typing at maxspeed
 
-bool spamdetect(client *cl, char *text) // checks doubled lines and average typing speed
+static bool spamdetect(client *cl, char *text) // checks doubled lines and average typing speed
 {
     if(cl->type != ST_TCPIP || cl->role == CR_ADMIN) return false;
     bool spam = false;
@@ -1339,7 +3529,7 @@ bool spamdetect(client *cl, char *text) // checks doubled lines and average typi
 //  b) no hidden messages from spects to active teams,
 //  c) no spect talk to players during 'match'
 
-void sendteamtext(char *text, int sender, int msgtype)
+static void sendteamtext(char *text, int sender, int msgtype)
 {
     if(!valid_client(sender) || clients[sender]->team == TEAM_VOID) return;
     packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
@@ -1359,7 +3549,7 @@ void sendteamtext(char *text, int sender, int msgtype)
     }
 }
 
-void sendvoicecomteam(int sound, int sender)
+static void sendvoicecomteam(int sound, int sender)
 {
     if(!valid_client(sender) || clients[sender]->team == TEAM_VOID) return;
     packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
@@ -1374,7 +3564,7 @@ void sendvoicecomteam(int sound, int sender)
     }
 }
 
-int numplayers()
+static int numplayers()
 {
     int count = 1;
 #ifdef STANDALONE
@@ -1393,7 +3583,7 @@ int numplayers()
     return count;
 }
 
-int spawntime(int type)
+static int spawntime(int type)
 {
     int np = numplayers();
     np = np<3 ? 4 : (np>4 ? 2 : 3);    // Some spawn times are dependent on the number of players.
@@ -1452,22 +3642,7 @@ bool serverpickup(int i, int sender)         // server side item pickup, acknowl
     return true;
 }
 
-void checkitemspawns(int diff)
-{
-    if(!diff) return;
-    loopv(sents) if(sents[i].spawntime)
-    {
-        sents[i].spawntime -= diff;
-        if(sents[i].spawntime<=0)
-        {
-            sents[i].spawntime = 0;
-            sents[i].spawned = true;
-            sendf(-1, 1, "ri2", SV_ITEMSPAWN, i);
-        }
-    }
-}
-
-void serverdamage(client *target, client *actor, int damage, int gun, bool gib, const vec &hitpush = vec(0, 0, 0))
+static void serverdamage(client *target, client *actor, int damage, int gun, bool gib, const vec &hitpush = vec(0, 0, 0))
 {
     if (!m_demo && !m_coop && !validdamage(target, actor, damage, gun, gib)) return;
     if ( m_arena && gun == GUN_GRENADE && arenaroundstartmillis + 2000 > gamemillis && target != actor ) return;
@@ -1552,11 +3727,199 @@ void serverdamage(client *target, client *actor, int damage, int gun, bool gib, 
     } else if ( target!=actor && isteam(target->team, actor->team) ) check_ffire (target, actor, damage); // friendly fire counter
 }
 
-#include "serverevents.h"
+static void processevent(client *c, explodeevent &e)
+{
+    clientstate &gs = c->state;
+    switch(e.gun)
+    {
+        case GUN_GRENADE:
+            if(!gs.grenades.remove(e.id)) return;
+            break;
 
-bool updatedescallowed(void) { return scl.servdesc_pre[0] || scl.servdesc_suf[0]; }
+        default:
+            return;
+    }
+    for(int i = 1; i<c->events.length() && c->events[i].type==GE_HIT; i++)
+    {
+        hitevent &h = c->events[i].hit;
+        if(!clients.inrange(h.target)) continue;
+        client *target = clients[h.target];
+        if(target->type==ST_EMPTY || target->state.state!=CS_ALIVE || h.lifesequence!=target->state.lifesequence || h.dist<0 || h.dist>EXPDAMRAD) continue;
 
-void updatesdesc(const char *newdesc, ENetAddress *caller = NULL)
+        int j = 1;
+        for(j = 1; j<i; j++) if(c->events[j].hit.target==h.target) break;
+        if(j<i) continue;
+
+        int damage = int(guns[e.gun].damage*(1-h.dist/EXPDAMRAD));
+        bool chk_gun = e.gun==GUN_GRENADE;
+        bool chk_dir = h.dir[0]+h.dir[1]+h.dir[2]==0;
+        bool chk_dst = h.dist < 2.0f;
+        bool chk_cnr = c->clientnum == target->clientnum;
+        if(chk_gun && chk_dir && chk_dst && chk_cnr) damage = INT_MAX; // nade suicide
+        serverdamage(target, c, damage, e.gun, true, h.dir);
+    }
+}
+
+static void processevent(client *c, shotevent &e)
+{
+    clientstate &gs = c->state;
+    int wait = e.millis - gs.lastshot;
+    if(!gs.isalive(gamemillis) ||
+       e.gun<GUN_KNIFE || e.gun>=NUMGUNS ||
+       wait<gs.gunwait[e.gun] ||
+       gs.mag[e.gun]<=0)
+        return;
+    if(e.gun!=GUN_KNIFE) gs.mag[e.gun]--;
+    loopi(NUMGUNS) if(gs.gunwait[i]) gs.gunwait[i] = max(gs.gunwait[i] - (e.millis-gs.lastshot), 0);
+    gs.lastshot = e.millis;
+    gs.gunwait[e.gun] = attackdelay(e.gun);
+    if(e.gun==GUN_PISTOL && gs.akimbomillis>gamemillis) gs.gunwait[e.gun] /= 2;
+    sendf(-1, 1, "ri6x", SV_SHOTFX, c->clientnum, e.gun,
+//         int(e.from[0]*DMF), int(e.from[1]*DMF), int(e.from[2]*DMF),
+        int(e.to[0]*DMF), int(e.to[1]*DMF), int(e.to[2]*DMF),
+        c->clientnum);
+    gs.shotdamage += guns[e.gun].damage*(e.gun==GUN_SHOTGUN ? SGMAXDMGLOC : 1); // 2011jan17:ft: so accuracy stays correct, since SNIPER:headshot also "exceeds expectations" we use SGMAXDMGLOC instead of SGMAXDMGABS!
+    switch(e.gun)
+    {
+        case GUN_GRENADE: gs.grenades.add(e.id); break;
+        default:
+        {
+            int totalrays = 0, maxrays = e.gun==GUN_SHOTGUN ? 3*SGRAYS: 1;
+            int tothits_c = 0, tothits_m = 0, tothits_o = 0; // sgrays
+            for(int i = 1; i<c->events.length() && c->events[i].type==GE_HIT; i++)
+            {
+                hitevent &h = c->events[i].hit;
+                if(!clients.inrange(h.target)) continue;
+                client *target = clients[h.target];
+                if(target->type==ST_EMPTY || target->state.state!=CS_ALIVE || h.lifesequence!=target->state.lifesequence) continue;
+
+                int rays = 1, damage = 0;
+                bool gib = false;
+                if(e.gun == GUN_SHOTGUN)
+                {
+                    h.info = isbigendian() ? endianswap(h.info) : h.info;
+                    int bonusdist = h.info&0xFF;
+                    int numhits_c = (h.info & 0x0000FF00) >> 8, numhits_m = (h.info & 0x00FF0000) >> 16, numhits_o = (h.info & 0xFF000000) >> 24;
+                    tothits_c += numhits_c; tothits_m += numhits_m; tothits_o += numhits_o;
+                    rays = numhits_c + numhits_m + numhits_o;
+
+                    if(rays < 1 || tothits_c > SGRAYS || tothits_m > SGRAYS || tothits_o > SGRAYS || bonusdist > SGDMGBONUS) continue;
+
+                    gib = rays == maxrays;
+                    float fdamage = (SGDMGTOTAL/(21*100.0f)) * (numhits_o * SGCOdmg/10.0f + numhits_m * SGCMdmg/10.0f + numhits_c * SGCCdmg/10.0f);
+                    fdamage += (float)bonusdist;
+                    damage = (int)ceil(fdamage);
+#ifdef ACAC
+                    if (!sg_engine(target, c, numhits_c, numhits_m, numhits_o, bonusdist)) continue;
+#endif
+                }
+                else
+                {
+                    damage = rays*guns[e.gun].damage;
+                    gib = e.gun == GUN_KNIFE;
+                    if(e.gun == GUN_SNIPER && h.info != 0)
+                    {
+                        gib = true;
+                        damage *= 3;
+                    }
+                }
+                totalrays += rays;
+
+                if(totalrays>maxrays) continue;
+                serverdamage(target, c, damage, e.gun, gib, h.dir);
+            }
+            break;
+        }
+    }
+}
+
+static void processevent(client *c, suicideevent &e)
+{
+    serverdamage(c, c, INT_MAX, GUN_KNIFE, false);
+}
+
+static void processevent(client *c, pickupevent &e)
+{
+    clientstate &gs = c->state;
+    if(m_mp(gamemode) && !gs.isalive(gamemillis)) return;
+    serverpickup(e.ent, c->clientnum);
+}
+
+static void processevent(client *c, reloadevent &e)
+{
+    clientstate &gs = c->state;
+    if(!gs.isalive(gamemillis) ||
+       e.gun<GUN_KNIFE || e.gun>=NUMGUNS ||
+       !reloadable_gun(e.gun) ||
+       gs.ammo[e.gun]<=0)
+        return;
+
+    bool akimbo = e.gun==GUN_PISTOL && gs.akimbomillis>e.millis;
+    int mag = (akimbo ? 2 : 1) * magsize(e.gun), numbullets = min(gs.ammo[e.gun], mag - gs.mag[e.gun]);
+    if(numbullets<=0) return;
+
+    gs.mag[e.gun] += numbullets;
+    gs.ammo[e.gun] -= numbullets;
+
+    int wait = e.millis - gs.lastshot;
+    sendf(-1, 1, "ri3", SV_RELOAD, c->clientnum, e.gun);
+    if(gs.gunwait[e.gun] && wait<gs.gunwait[e.gun]) gs.gunwait[e.gun] += reloadtime(e.gun);
+    else
+    {
+        loopi(NUMGUNS) if(gs.gunwait[i]) gs.gunwait[i] = max(gs.gunwait[i] - (e.millis-gs.lastshot), 0);
+        gs.lastshot = e.millis;
+        gs.gunwait[e.gun] += reloadtime(e.gun);
+    }
+}
+
+static void processevent(client *c, akimboevent &e)
+{
+    clientstate &gs = c->state;
+    if(!gs.isalive(gamemillis) || gs.akimbomillis) return;
+    gs.akimbomillis = e.millis+30000;
+}
+
+static void clearevent(client *c)
+{
+    int n = 1;
+    while(n<c->events.length() && c->events[n].type==GE_HIT) n++;
+    c->events.remove(0, n);
+}
+
+static void processevents()
+{
+    loopv(clients)
+    {
+        client *c = clients[i];
+        if(c->type==ST_EMPTY) continue;
+        if(c->state.akimbomillis && c->state.akimbomillis < gamemillis) { c->state.akimbomillis = 0; c->state.akimbo = false; }
+        while(c->events.length())
+        {
+            gameevent &e = c->events[0];
+            if(e.type<GE_SUICIDE)
+            {
+                if(e.shot.millis>gamemillis) break;
+                if(e.shot.millis<c->lastevent) { clearevent(c); continue; }
+                c->lastevent = e.shot.millis;
+            }
+            switch(e.type)
+            {
+                case GE_SHOT: processevent(c, e.shot); break;
+                case GE_EXPLODE: processevent(c, e.explode); break;
+                case GE_AKIMBO: processevent(c, e.akimbo); break;
+                case GE_RELOAD: processevent(c, e.reload); break;
+                // untimed events
+                case GE_SUICIDE: processevent(c, e.suicide); break;
+                case GE_PICKUP: processevent(c, e.pickup); break;
+            }
+            clearevent(c);
+        }
+    }
+}
+
+static bool updatedescallowed(void) { return scl.servdesc_pre[0] || scl.servdesc_suf[0]; }
+
+static void updatesdesc(const char *newdesc, ENetAddress *caller = NULL)
 {
     if(!newdesc || !newdesc[0] || !updatedescallowed())
     {
@@ -1571,7 +3934,7 @@ void updatesdesc(const char *newdesc, ENetAddress *caller = NULL)
     }
 }
 
-int canspawn(client *c)   // beware: canspawn() doesn't check m_arena!
+static int canspawn(client *c)   // beware: canspawn() doesn't check m_arena!
 {
     if(!c || c->type == ST_EMPTY || !c->isauthed || !team_isvalid(c->team) ||
         (c->type == ST_TCPIP && (c->state.lastdeath > 0 ? gamemillis - c->state.lastdeath : servmillis - c->connectmillis) < (m_arena ? 0 : (m_flags ? 5000 : 2000))) ||
@@ -1590,7 +3953,7 @@ int canspawn(client *c)   // beware: canspawn() doesn't check m_arena!
     return SP_OK;
 }
 
-void autospawncheck()
+static void autospawncheck()
 {
     if(mastermode != MM_MATCH || !m_autospawn || interm) return;
     
@@ -1607,7 +3970,7 @@ void autospawncheck()
 }
 
 /** FIXME: this function is unnecessarily complicated */
-bool updateclientteam(int cln, int newteam, int ftr)
+static bool updateclientteam(int cln, int newteam, int ftr)
 {
     if(!valid_client(cln)) return false;
     if(!team_isvalid(newteam) && newteam != TEAM_ANYACTIVE) newteam = TEAM_SPECT;
@@ -1669,7 +4032,7 @@ bool updateclientteam(int cln, int newteam, int ftr)
     return true;
 }
 
-int calcscores() // skill eval
+static int calcscores() // skill eval
 {
     int sum = 0;
     loopv(clients) if(clients[i]->type!=ST_EMPTY)
@@ -1680,9 +4043,9 @@ int calcscores() // skill eval
     return sum;
 }
 
-vector<int> shuffle;
+static vector<int> shuffle;
 
-void shuffleteams(int ftr = FTR_AUTOTEAM)
+static void shuffleteams(int ftr = FTR_AUTOTEAM)
 {
     int numplayers = numclients();
     int team, sums = calcscores();
@@ -1724,7 +4087,7 @@ void shuffleteams(int ftr = FTR_AUTOTEAM)
     }
 }
 
-bool balanceteams(int ftr)  // pro vs noobs never more
+static bool balanceteams(int ftr)  // pro vs noobs never more
 {
     if(mastermode != MM_OPEN || totalclients < 3 ) return true;
     int tsize[2] = {0, 0}, tscore[2] = {0, 0};
@@ -1819,9 +4182,9 @@ bool balanceteams(int ftr)  // pro vs noobs never more
     return false;
 }
 
-int lastbalance = 0, waitbalance = 2 * 60 * 1000;
+static int lastbalance = 0, waitbalance = 2 * 60 * 1000;
 
-bool refillteams(bool now, int ftr)  // force only minimal amounts of players
+static bool refillteams(bool now, int ftr)  // force only minimal amounts of players
 {
     if(mastermode == MM_MATCH) return false;
     static int lasttime_eventeams = 0;
@@ -1912,7 +4275,7 @@ bool refillteams(bool now, int ftr)  // force only minimal amounts of players
     return switched;
 }
 
-void resetserver(const char *newname, int newmode, int newtime)
+static void resetserver(const char *newname, int newmode, int newtime)
 {
     if(m_demo) enddemoplayback();
     else enddemorecord();
@@ -1940,14 +4303,14 @@ void resetserver(const char *newname, int newmode, int newtime)
     forceintermission = false;
 }
 
-void startdemoplayback(const char *newname)
+static void startdemoplayback(const char *newname)
 {
     if(isdedicated) return;
     resetserver(newname, GMODE_DEMO, -1);
     setupdemoplayback();
 }
 
-void startgame(const char *newname, int newmode, int newtime, bool notify)
+static void startgame(const char *newname, int newmode, int newtime, bool notify)
 {
     if(!newname || !*newname || (newmode == GMODE_DEMO && isdedicated)) fatal("startgame() abused");
     if(newmode == GMODE_DEMO)
@@ -2052,20 +4415,20 @@ struct gbaninfo
     enet_uint32 ip, mask;
 };
 
-vector<gbaninfo> gbans;
+static vector<gbaninfo> gbans;
 
-void cleargbans()
+static void cleargbans()
 {
     gbans.shrink(0);
 }
 
-bool checkgban(uint ip)
+static bool checkgban(uint ip)
 {
     loopv(gbans) if((ip & gbans[i].mask) == gbans[i].ip) return true;
     return false;
 }
 
-void addgban(const char *name)
+static void addgban(const char *name)
 {
     union { uchar b[sizeof(enet_uint32)]; enet_uint32 i; } ip, mask;
     ip.i = 0;
@@ -2091,15 +4454,7 @@ void addgban(const char *name)
     }
 }
 
-inline void addban(client *cl, int reason, int type)
-{
-    if(!cl) return;
-    ban b = { cl->peer->address, servmillis+scl.ban_time, type };
-    bans.add(b);
-    disconnect_client(cl->clientnum, reason);
-}
-
-int getbantype(int cn)
+static int getbantype(int cn)
 {
     if(!valid_client(cn)) return BAN_NONE;
     client &c = *clients[cn];
@@ -2115,19 +4470,346 @@ int getbantype(int cn)
     return BAN_NONE;
 }
 
-int serveroperator()
+static int serveroperator()
 {
     loopv(clients) if(clients[i]->type!=ST_EMPTY && clients[i]->role > CR_DEFAULT) return i;
     return -1;
 }
 
-void sendserveropinfo(int receiver)
+static void sendserveropinfo(int receiver)
 {
     int op = serveroperator();
     sendf(receiver, 1, "riii", SV_SERVOPINFO, op, op >= 0 ? clients[op]->role : -1);
 }
 
-#include "serveractions.h"
+enum { EE_LOCAL_SERV = 1, EE_DED_SERV = 1<<1 }; // execution environment
+
+static int roleconf(int key)
+{ // current defaults: "fkbMASRCDEPtw"
+    if(strchr(scl.voteperm, tolower(key))) return CR_DEFAULT;
+    if(strchr(scl.voteperm, toupper(key))) return CR_ADMIN;
+    return (key) == tolower(key) ? CR_DEFAULT : CR_ADMIN;
+}
+
+struct serveraction
+{
+    int role; // required client role
+    int area; // only on ded servers
+    string desc;
+
+    virtual void perform() = 0;
+    virtual bool isvalid() { return true; }
+    virtual bool isdisabled() { return false; }
+    serveraction() : role(CR_DEFAULT), area(EE_DED_SERV) { desc[0] = '\0'; }
+    virtual ~serveraction() { }
+};
+
+static void kick_abuser(int cn, int &cmillis, int &count, int limit)
+{
+    if ( cmillis + 30000 > servmillis ) count++;
+    else {
+        count -= count > 0 ? (servmillis - cmillis)/30000 : 0;
+        if ( count <= 0 ) count = 1;
+    }
+    cmillis = servmillis;
+    if( count >= limit ) disconnect_client(cn, DISC_ABUSE);
+}
+
+struct mapaction : serveraction
+{
+    char *map;
+    int mode, time;
+    bool mapok, queue;
+    void perform()
+    {
+        if(queue)
+        {
+            nextgamemode = mode;
+            copystring(nextmapname, map);
+        }
+        else if(isdedicated && numclients() > 2 && smode >= 0 && smode != 1 && ( gamemillis > gamelimit/4 || scl.demo_interm ))
+        {
+            forceintermission = true;
+            nextgamemode = mode;
+            copystring(nextmapname, map);
+        }
+        else
+        {
+            startgame(map, mode, time);
+        }
+    }
+    bool isvalid() { return serveraction::isvalid() && mode != GMODE_DEMO && map[0] && mapok && !(isdedicated && !m_mp(mode)); }
+    bool isdisabled() { return maprot.current() && !maprot.current()->vote; }
+    mapaction(char *map, int mode, int time, int caller, bool q) : map(map), mode(mode), time(time), queue(q)
+    {
+        if(isdedicated)
+        {
+            bool notify = valid_client(caller);
+            int maploc = MAP_NOTFOUND;
+            mapstats *ms = map[0] ? getservermapstats(map, false, &maploc) : NULL;
+            bool validname = validmapname(map);
+            mapok = (ms != NULL) && validname && ( (mode != GMODE_COOPEDIT && mapisok(ms)) || (mode == GMODE_COOPEDIT && !readonlymap(maploc)) );
+            if(!mapok)
+            {
+                if(notify)
+                {
+                    if(!validname)
+                        sendservmsg("invalid map name", caller);
+                    else
+                    {
+                        sendservmsg(ms ?
+                            ( mode == GMODE_COOPEDIT ? "this map cannot be coopedited in this server" : "sorry, but this map does not satisfy some quality requisites to be played in MultiPlayer Mode" ) :
+                            "the server does not have this map",
+                            caller);
+                    }
+                }
+            }
+            else
+            { // check, if map supports mode
+                if(mode == GMODE_COOPEDIT && !strchr(scl.voteperm, 'e')) role = CR_ADMIN;
+                bool romap = mode == GMODE_COOPEDIT && readonlymap(maploc);
+                int smode = mode;  // 'borrow' the mode macros by replacing a global by a local var
+                bool spawns = mode == GMODE_COOPEDIT || (m_teammode && !m_ktf ? ms->hasteamspawns : ms->hasffaspawns);
+                bool flags = mode != GMODE_COOPEDIT && m_flags && !m_htf ? ms->hasflags : true;
+                if(!spawns || !flags || romap)
+                { // unsupported mode
+                    if(strchr(scl.voteperm, 'P')) role = CR_ADMIN;
+                    else if(!strchr(scl.voteperm, 'p')) mapok = false; // default: no one can vote for unsupported mode/map combinations
+                    defformatstring(msg)("\f3map \"%s\" does not support \"%s\": ", behindpath(map), modestr(mode, false));
+                    if(romap) concatstring(msg, "map is readonly");
+                    else
+                    {
+                        if(!spawns) concatstring(msg, "player spawns");
+                        if(!spawns && !flags) concatstring(msg, " and ");
+                        if(!flags) concatstring(msg, "flag bases");
+                        concatstring(msg, " missing");
+                    }
+                    if(notify) sendservmsg(msg, caller);
+                    logline(ACLOG_INFO, "%s", msg);
+                }
+            }
+            loopv(scl.adminonlymaps)
+            {
+                const char *s = scl.adminonlymaps[i], *h = strchr(s, '#'), *m = behindpath(map);
+                size_t sl = strlen(s);
+                if(h)
+                {
+                    if(h != s)
+                    {
+                        sl = h - s;
+                        if(mode != atoi(h + 1)) continue;
+                    }
+                    else
+                    {
+                        if(mode == atoi(h+1))
+                        {
+                            role = CR_ADMIN;
+                            break;
+                        }
+                    }
+                }
+                if(sl == strlen(m) && !strncmp(m, scl.adminonlymaps[i], sl)) role = CR_ADMIN;
+            }
+        }
+        else
+        {
+            int mp = findmappath(map);
+            mapok = mp == MAP_LOCAL || mp == MAP_OFFICIAL;    // clients can only load from packages/maps and packages/maps/official
+#ifndef STANDALONE
+            if(!mapok) conoutf("\f3map '%s' not found", map);
+#endif
+        }
+        area |= EE_LOCAL_SERV; // local too
+        formatstring(desc)("load map '%s' in mode '%s'", map, modestr(mode));
+        if(q) concatstring(desc, " (in the next game)");
+    }
+    ~mapaction() { DELETEA(map); }
+};
+
+struct demoplayaction : serveraction
+{
+    char *demofilename;
+    void perform() { startdemoplayback(demofilename); }
+    demoplayaction(char *demofilename) : demofilename(demofilename)
+    {
+        area = EE_LOCAL_SERV; // only local
+    }
+
+    ~demoplayaction() { DELETEA(demofilename); }
+};
+
+struct playeraction : serveraction
+{
+    int cn;
+    ENetAddress address;
+    void disconnect(int reason)
+    {
+        int i = findcnbyaddress(&address);
+        if(i >= 0) disconnect_client(i, reason);
+    }
+    virtual bool isvalid() { return valid_client(cn) && clients[cn]->role != CR_ADMIN; } // actions can't be done on admins
+    playeraction(int cn) : cn(cn)
+    {
+        if(isvalid()) address = clients[cn]->peer->address;
+    };
+};
+
+struct forceteamaction : playeraction
+{
+    int team;
+    void perform() { updateclientteam(cn, team, FTR_SILENTFORCE); }
+    virtual bool isvalid() { return valid_client(cn) && team_isvalid(team) && team != clients[cn]->team; }
+    forceteamaction(int cn, int caller, int team) : playeraction(cn), team(team)
+    {
+        if(cn != caller) role = roleconf('f');
+        if(isvalid() && !(clients[cn]->state.forced && clients[caller]->role != CR_ADMIN)) formatstring(desc)("force player %s to team %s", clients[cn]->name, teamnames[team]);
+    }
+};
+
+struct giveadminaction : playeraction
+{
+    void perform() { changeclientrole(cn, CR_ADMIN, NULL, true); }
+    giveadminaction(int cn) : playeraction(cn)
+    {
+        role = CR_ADMIN;
+//        role = roleconf('G');
+    }
+};
+
+struct kickaction : playeraction
+{
+    bool wasvalid;
+    void perform()  { disconnect(DISC_MKICK); }
+    virtual bool isvalid() { return wasvalid || playeraction::isvalid(); }
+    kickaction(int cn, char *reason) : playeraction(cn)
+    {
+        wasvalid = false;
+        role = roleconf('k');
+        if(isvalid())
+        {
+            wasvalid = true;
+            formatstring(desc)("kick player %s, reason: %s", clients[cn]->name, reason);
+        }
+    }
+};
+
+struct banaction : playeraction
+{
+    bool wasvalid;
+    void perform()
+    {
+        int i = findcnbyaddress(&address);
+        if(i >= 0) addban(clients[i], DISC_MBAN, BAN_VOTE);
+    }
+    virtual bool isvalid() { return wasvalid || playeraction::isvalid(); }
+    banaction(int cn, char *reason) : playeraction(cn)
+    {
+        wasvalid = false;
+        role = roleconf('b');
+        if(isvalid())
+        {
+            wasvalid = true;
+            formatstring(desc)("ban player %s, reason: %s", clients[cn]->name, reason);
+        }
+    }
+};
+
+struct removebansaction : serveraction
+{
+    void perform() { bans.shrink(0); }
+    removebansaction()
+    {
+        role = roleconf('b');
+        copystring(desc, "remove all bans");
+    }
+};
+
+struct mastermodeaction : serveraction
+{
+    int mode;
+    void perform() { changemastermode(mode); }
+    bool isvalid() { return mode >= 0 && mode < MM_NUM; }
+    mastermodeaction(int mode) : mode(mode)
+    {
+        role = roleconf('M');
+        if(isvalid()) formatstring(desc)("change mastermode to '%s'", mmfullname(mode));
+    }
+};
+
+struct enableaction : serveraction
+{
+    bool enable;
+    enableaction(bool enable) : enable(enable) {}
+};
+
+struct autoteamaction : enableaction
+{
+    void perform()
+    {
+        autoteam = enable;
+        sendservermode();
+        if(m_teammode && enable) refillteams(true);
+    }
+    autoteamaction(bool enable) : enableaction(enable)
+    {
+        role = roleconf('A');
+        if(isvalid()) formatstring(desc)("%s autoteam", enable ? "enable" : "disable");
+    }
+};
+
+struct shuffleteamaction : serveraction
+{
+    void perform()
+    {
+        sendf(-1, 1, "ri2", SV_SERVERMODE, sendservermode(false) | AT_SHUFFLE);
+        shuffleteams();
+    }
+    bool isvalid() { return serveraction::isvalid() && m_teammode; }
+    shuffleteamaction()
+    {
+        role = roleconf('S');
+        if(isvalid()) copystring(desc, "shuffle teams");
+    }
+};
+
+struct recorddemoaction : enableaction            // TODO: remove completely
+{
+    void perform() { }
+    bool isvalid() { return serveraction::isvalid(); }
+    recorddemoaction(bool enable) : enableaction(enable)
+    {
+        role = roleconf('R');
+        if(isvalid()) formatstring(desc)("%s demorecord", enable ? "enable" : "disable");
+    }
+};
+
+struct cleardemosaction : serveraction
+{
+    int demo;
+    void perform() { cleardemos(demo); }
+    cleardemosaction(int demo) : demo(demo)
+    {
+        role = roleconf('C');
+        if(isvalid()) formatstring(desc)("clear demo %d", demo);
+    }
+};
+
+struct serverdescaction : serveraction
+{
+    char *sdesc;
+    int cn;
+    ENetAddress address;
+    void perform() { updatesdesc(sdesc, &address); }
+    bool isvalid() { return serveraction::isvalid() && updatedescallowed() && valid_client(cn); }
+    serverdescaction(char *sdesc, int cn) : sdesc(sdesc), cn(cn)
+    {
+        role = roleconf('D');
+        formatstring(desc)("set server description to '%s'", sdesc);
+        if(isvalid()) address = clients[cn]->peer->address;
+    }
+    ~serverdescaction() { DELETEA(sdesc); }
+};
+
 
 struct voteinfo
 {
@@ -2188,7 +4870,7 @@ struct voteinfo
 
 static voteinfo *server_curvote = NULL;
 
-bool svote(int sender, int vote, ENetPacket *msg) // true if the vote was placed successfully
+static bool svote(int sender, int vote, ENetPacket *msg) // true if the vote was placed successfully
 {
     if(!server_curvote || !valid_client(sender) || vote < VOTE_YES || vote > VOTE_NO) return false;
     if(clients[sender]->vote != VOTE_NEUTRAL)
@@ -2207,7 +4889,7 @@ bool svote(int sender, int vote, ENetPacket *msg) // true if the vote was placed
     }
 }
 
-void scallvotesuc(voteinfo *v)
+static void scallvotesuc(voteinfo *v)
 {
     if(!v->isvalid()) return;
     DELETEP(server_curvote);
@@ -2218,17 +4900,17 @@ void scallvotesuc(voteinfo *v)
     logline(ACLOG_INFO, "[%s] client %s called a vote: %s", clients[v->owner]->hostname, clients[v->owner]->name, v->action && v->action->desc ? v->action->desc : "[unknown]");
 }
 
-void scallvoteerr(voteinfo *v, int error)
+static void scallvoteerr(voteinfo *v, int error)
 {
     if(!valid_client(v->owner)) return;
     sendf(v->owner, 1, "ri2", SV_CALLVOTEERR, error);
     logline(ACLOG_INFO, "[%s] client %s failed to call a vote: %s (%s)", clients[v->owner]->hostname, clients[v->owner]->name, v->action && v->action->desc ? v->action->desc : "[unknown]", voteerrorstr(error));
 }
 
-bool map_queued = false;
-void callvotepacket (int, voteinfo *);
+static bool map_queued = false;
+static void callvotepacket (int, voteinfo *);
 
-bool scallvote(voteinfo *v, ENetPacket *msg) // true if a regular vote was called
+static bool scallvote(voteinfo *v, ENetPacket *msg) // true if a regular vote was called
 {
     if (!v) return false;
     int area = isdedicated ? EE_DED_SERV : EE_LOCAL_SERV;
@@ -2272,7 +4954,7 @@ bool scallvote(voteinfo *v, ENetPacket *msg) // true if a regular vote was calle
     }
 }
 
-void callvotepacket (int cn, voteinfo *v = server_curvote)
+static void callvotepacket (int cn, voteinfo *v = server_curvote)
 { // FIXME, it would be far smart if the msg buffer from SV_CALLVOTE was simply saved
     int n_yes = 0, n_no = 0;
     loopv(clients) if(clients[i]->type!=ST_EMPTY)
@@ -2321,7 +5003,7 @@ void callvotepacket (int cn, voteinfo *v = server_curvote)
 }
 
 // TODO: use AUTH code
-void changeclientrole(int client, int role, char *pwd, bool force)
+static void changeclientrole(int client, int role, char *pwd, bool force)
 {
     pwddetail pd;
     if(!isdedicated || !valid_client(client)) return;
@@ -2344,7 +5026,7 @@ void changeclientrole(int client, int role, char *pwd, bool force)
     if(server_curvote) server_curvote->evaluate();
 }
 
-void senddisconnectedscores(int cn)
+static void senddisconnectedscores(int cn)
 {
     packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
     putint(p, SV_DISCSCORES);
@@ -2374,7 +5056,7 @@ const char *disc_reason(int reason)
     return reason >= 0 && (size_t)reason < sizeof(disc_reasons)/sizeof(disc_reasons[0]) ? disc_reasons[reason] : "unknown";
 }
 
-void disconnect_client(int n, int reason)
+static void disconnect_client(int n, int reason)
 {
     if(!clients.inrange(n) || clients[n]->type!=ST_TCPIP) return;
     sdropflag(n);
@@ -2404,20 +5086,20 @@ void disconnect_client(int n, int reason)
 
 // for AUTH: WIP
 
-client *findauth(uint id)
+static client *findauth(uint id)
 {
     loopv(clients) if(clients[i]->authreq == id) return clients[i];
     return NULL;
 }
 
-void authfailed(uint id)
+static void authfailed(uint id)
 {
     client *cl = findauth(id);
     if(!cl) return;
     cl->authreq = 0;
 }
 
-void authsucceeded(uint id)
+static void authsucceeded(uint id)
 {
     client *cl = findauth(id);
     if(!cl) return;
@@ -2428,16 +5110,16 @@ void authsucceeded(uint id)
     //setmaster(cl, true, "", ci->authname);//TODO? compare to sauerbraten
 }
 
-void authchallenged(uint id, const char *val)
+static void authchallenged(uint id, const char *val)
 {
     client *cl = findauth(id);
     if(!cl) return;
     sendf(cl->clientnum, 1, "risis", SV_AUTHCHAL, "", id, val);
 }
 
-uint nextauthreq = 0;
+static uint nextauthreq = 0;
 
-void tryauth(client *cl, const char *user)
+static void tryauth(client *cl, const char *user)
 {
     extern bool requestmasterf(const char *fmt, ...);
     if(!nextauthreq) nextauthreq = 1;
@@ -2450,7 +5132,7 @@ void tryauth(client *cl, const char *user)
     }
 }
 
-void answerchallenge(client *cl, uint id, char *val)
+static void answerchallenge(client *cl, uint id, char *val)
 {
     if(cl->authreq != id) return;
     extern bool requestmasterf(const char *fmt, ...);
@@ -2467,7 +5149,7 @@ void answerchallenge(client *cl, uint id, char *val)
 
 // :for AUTH
 
-void sendiplist(int receiver, int cn)
+static void sendiplist(int receiver, int cn)
 {
     if(!valid_client(receiver)) return;
     packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
@@ -2482,7 +5164,7 @@ void sendiplist(int receiver, int cn)
     sendpacket(receiver, 1, p.finalize());
 }
 
-void sendresume(client &c, bool broadcast)
+static void sendresume(client &c, bool broadcast)
 {
     sendf(broadcast ? -1 : c.clientnum, 1, "ri3i9ivvi", SV_RESUME,
             c.clientnum,
@@ -2502,7 +5184,7 @@ void sendresume(client &c, bool broadcast)
             -1);
 }
 
-bool restorescore(client &c)
+static bool restorescore(client &c)
 {
     //if(ci->local) return false;
     savedscore *sc = findscore(c, false);
@@ -2517,12 +5199,12 @@ bool restorescore(client &c)
     return false;
 }
 
-void sendservinfo(client &c)
+static void sendservinfo(client &c)
 {
     sendf(c.clientnum, 1, "ri5", SV_SERVINFO, c.clientnum, isdedicated ? SERVER_PROTOCOL_VERSION : PROTOCOL_VERSION, c.salt, scl.serverpassword[0] ? 1 : 0);
 }
 
-void putinitclient(client &c, packetbuf &p)
+static void putinitclient(client &c, packetbuf &p)
 {
     putint(p, SV_INITCLIENT);
     putint(p, c.clientnum);
@@ -2535,14 +5217,14 @@ void putinitclient(client &c, packetbuf &p)
     putint(p, isbigendian() ? endianswap(ip) : ip);
 }
 
-void sendinitclient(client &c)
+static void sendinitclient(client &c)
 {
     packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
     putinitclient(c, p);
     sendpacket(-1, 1, p.finalize(), c.clientnum);
 }
 
-void welcomeinitclient(packetbuf &p, int exclude = -1)
+static void welcomeinitclient(packetbuf &p, int exclude = -1)
 {
     loopv(clients)
     {
@@ -2552,7 +5234,7 @@ void welcomeinitclient(packetbuf &p, int exclude = -1)
     }
 }
 
-void welcomepacket(packetbuf &p, int n)
+static void welcomepacket(packetbuf &p, int n)
 {
     if(!smapname[0]) maprot.next(false);
 
@@ -2625,7 +5307,7 @@ void welcomepacket(packetbuf &p, int n)
     }
 }
 
-void sendwelcome(client *cl, int chan)
+static void sendwelcome(client *cl, int chan)
 {
     packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
     welcomepacket(p, cl->clientnum);
@@ -2633,7 +5315,7 @@ void sendwelcome(client *cl, int chan)
     cl->haswelcome = true;
 }
 
-void forcedeath(client *cl)
+static void forcedeath(client *cl)
 {
     sdropflag(cl->clientnum);
     cl->state.state = CS_DEAD;
@@ -2641,7 +5323,7 @@ void forcedeath(client *cl)
     sendf(-1, 1, "rii", SV_FORCEDEATH, cl->clientnum);
 }
 
-int checktype(int type, client *cl)
+static int checktype(int type, client *cl)
 {
     if(cl && cl->type==ST_LOCAL) return type;
     if(type < 0 || type >= SV_NUM) return -1;
@@ -2670,7 +5352,7 @@ int checktype(int type, client *cl)
 // server side processing of updates: does very little and most state is tracked client only
 // could be extended to move more gameplay to server (at expense of lag)
 
-void process(ENetPacket *packet, int sender, int chan)
+static void process(ENetPacket *packet, int sender, int chan)
 {
     ucharbuf p(packet->data, packet->dataLength);
     char text[MAXTRANS];
@@ -3671,7 +6353,7 @@ void localclienttoserver(int chan, ENetPacket *packet)
     process(packet, 0, chan);
 }
 
-client &addclient()
+static client &addclient()
 {
     client *c = NULL;
     loopv(clients) if(clients[i]->type==ST_EMPTY) { c = clients[i]; break; }
@@ -3685,7 +6367,7 @@ client &addclient()
     return *c;
 }
 
-void checkintermission()
+static void checkintermission()
 {
     if(minremain>0)
     {
@@ -3696,7 +6378,7 @@ void checkintermission()
     forceintermission = false;
 }
 
-void resetserverifempty()
+static void resetserverifempty()
 {
     loopv(clients) if(clients[i]->type!=ST_EMPTY) return;
     resetserver("", 0, 10);
@@ -3706,7 +6388,7 @@ void resetserverifempty()
     nextmapname[0] = '\0';
 }
 
-void sendworldstate()
+static void sendworldstate()
 {
     static enet_uint32 lastsend = 0;
     if(clients.empty()) return;
@@ -3718,7 +6400,7 @@ void sendworldstate()
     if(demorecord) recordpackets = true; // enable after 'old' worldstate is sent
 }
 
-void rereadcfgs(void)
+static void rereadcfgs(void)
 {
     maprot.read();
     ipblacklist.read();
@@ -3728,7 +6410,7 @@ void rereadcfgs(void)
     killmsgs.read();
 }
 
-void loggamestatus(const char *reason)
+static void loggamestatus(const char *reason)
 {
     int fragscore[2] = {0, 0}, flagscore[2] = {0, 0}, pnum[2] = {0, 0};
     string text;
@@ -3786,7 +6468,7 @@ void loggamestatus(const char *reason)
 
 static unsigned char chokelog[MAXCLIENTS + 1] = { 0 };
 
-void linequalitystats(int elapsed)
+static void linequalitystats(int elapsed)
 {
     static unsigned int chokes[MAXCLIENTS + 1] = { 0 }, spent[MAXCLIENTS + 1] = { 0 }, chokes_raw[MAXCLIENTS + 1] = { 0 }, spent_raw[MAXCLIENTS + 1] = { 0 };
     if(elapsed)
@@ -4177,9 +6859,9 @@ void processmasterinput(const char *cmd, int cmdlen, const char *args)
     else if(sscanf(cmd, "addgban %s", val) == 1) addgban(val);
 }
 
-string server_name = "unarmed server";
+static string server_name = "unarmed server";
 
-void quitproc(int param)
+static void quitproc(int param)
 {
     // this triggers any "atexit"-calls:
     exit(param == 2 ? EXIT_SUCCESS : EXIT_FAILURE); // 3 is the only reply on Win32 apparently, SIGINT == 2 == Ctrl-C

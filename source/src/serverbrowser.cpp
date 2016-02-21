@@ -1,10 +1,8 @@
 // serverbrowser.cpp: eihrul's concurrent resolver, and server browser window management
 
 #include "cube.h"
-
+#include "server.h"
 #include "SDL_thread.h"
-
-extern bool isdedicated;
 
 struct resolverthread
 {
@@ -19,16 +17,16 @@ struct resolverresult
     ENetAddress address;
 };
 
-vector<resolverthread> resolverthreads;
-vector<const char *> resolverqueries;
-vector<resolverresult> resolverresults;
-SDL_mutex *resolvermutex;
-SDL_cond *querycond, *resultcond;
+static vector<resolverthread> resolverthreads;
+static vector<const char *> resolverqueries;
+static vector<resolverresult> resolverresults;
+static SDL_mutex *resolvermutex;
+static SDL_cond *querycond, *resultcond;
 
 #define RESOLVERTHREADS 1
 #define RESOLVERLIMIT 3000
 
-int resolverloop(void * data)
+static int resolverloop(void * data)
 {
     resolverthread *rt = (resolverthread *)data;
     SDL_LockMutex(resolvermutex);
@@ -79,7 +77,7 @@ void resolverinit()
     SDL_UnlockMutex(resolvermutex);
 }
 
-void resolverstop(resolverthread &rt)
+static void resolverstop(resolverthread &rt)
 {
     SDL_LockMutex(resolvermutex);
     if(rt.query)
@@ -94,7 +92,7 @@ void resolverstop(resolverthread &rt)
     SDL_UnlockMutex(resolvermutex);
 }
 
-void resolverclear()
+static void resolverclear()
 {
     if(resolverthreads.empty()) return;
 
@@ -109,7 +107,7 @@ void resolverclear()
     SDL_UnlockMutex(resolvermutex);
 }
 
-void resolverquery(const char *name)
+static void resolverquery(const char *name)
 {
     if(resolverthreads.empty()) resolverinit();
 
@@ -119,7 +117,7 @@ void resolverquery(const char *name)
     SDL_UnlockMutex(resolvermutex);
 }
 
-bool resolvercheck(const char **name, ENetAddress *address)
+static bool resolvercheck(const char **name, ENetAddress *address)
 {
     bool resolved = false;
     SDL_LockMutex(resolvermutex);
@@ -143,8 +141,6 @@ bool resolvercheck(const char **name, ENetAddress *address)
     SDL_UnlockMutex(resolvermutex);
     return resolved;
 }
-
-extern bool isdedicated;
 
 bool resolverwait(const char *name, ENetAddress *address)
 {
@@ -194,9 +190,9 @@ bool resolverwait(const char *name, ENetAddress *address)
     return resolved;
 }
 
-SDL_Thread *connthread = NULL;
-SDL_mutex *connmutex = NULL;
-SDL_cond *conncond = NULL;
+static SDL_Thread *connthread = NULL;
+static SDL_mutex *connmutex = NULL;
+static SDL_cond *conncond = NULL;
 
 struct connectdata
 {
@@ -207,7 +203,7 @@ struct connectdata
 
 // do this in a thread to prevent timeouts
 // could set timeouts on sockets, but this is more reliable and gives more control
-int connectthread(void *data)
+static int connectthread(void *data)
 {
     SDL_LockMutex(connmutex);
     if(!connthread || SDL_GetThreadID(connthread) != SDL_ThreadID())
@@ -281,13 +277,13 @@ int connectwithtimeout(ENetSocket sock, const char *hostname, ENetAddress &addre
     return cd.result;
 }
 
-vector<serverinfo *> servers;
-ENetSocket pingsock = ENET_SOCKET_NULL;
-int lastinfo = 0;
+static vector<serverinfo *> servers;
+static ENetSocket pingsock = ENET_SOCKET_NULL;
+static int lastinfo = 0;
 
 char *getservername(int n) { return servers[n]->name; }
 
-serverinfo *findserverinfo(ENetAddress address)
+static serverinfo *findserverinfo(ENetAddress address)
 {
     loopv(servers) if(servers[i]->address.host == address.host && servers[i]->port == address.port) return servers[i];
     return NULL;
@@ -330,14 +326,14 @@ void addserver(const char *servername, int serverport, int weight)
     newserver(servername, ENET_HOST_ANY, serverport, weight);
 }
 
-VARP(servpingrate, 1000, 5000, 60000);
-VARP(maxservpings, 0, 10, 1000);
+static VARP(servpingrate, 1000, 5000, 60000);
+static VARP(maxservpings, 0, 10, 1000);
 VAR(searchlan, 0, 1, 2);
 
 #define PINGBUFSIZE 100
 static int pingbuf[PINGBUFSIZE], curpingbuf = 0;
 
-int chooseextping(serverinfo *si)
+static int chooseextping(serverinfo *si)
 {
     if(si->getinfo != EXTPING_NOP) return si->getinfo;
     if(!si->uplinkqual_age || totalmillis - si->uplinkqual_age > 60 * 1000) return EXTPING_UPLINKSTATS;
@@ -412,7 +408,7 @@ void pingservers(bool issearch, serverinfo *onlyconnected)
     lastinfo = totalmillis;
 }
 
-void checkresolver()
+static void checkresolver()
 {
     int resolving = 0;
     loopv(servers)
@@ -447,7 +443,7 @@ void checkresolver()
 
 #define MAXINFOLINELEN 100  // including color codes
 
-void checkpings()
+static void checkpings()
 {
     if(pingsock == ENET_SOCKET_NULL) return;
     enet_uint32 events = ENET_SOCKET_WAIT_RECEIVE;
@@ -640,14 +636,14 @@ void checkpings()
 
 enum { SBS_PING = 0, SBS_NUMPL, SBS_MAXPL, SBS_MINREM, SBS_MAP, SBS_MODE, SBS_IP, SBS_DESC, NUMSERVSORT };
 
-VARP(serversort, 0, 0, NUMSERVSORT-1);
-VARP(serversortdir, 0, 0, 1);
-VARP(showonlygoodservers, 0, 0, 1);
-VAR(shownamesinbrowser, 0, 0, 1);
-VARP(showminremain, 0, 0, 1);
-VARP(serversortpreferofficial, 0, 1, 1);
+static VARP(serversort, 0, 0, NUMSERVSORT-1);
+static VARP(serversortdir, 0, 0, 1);
+static VARP(showonlygoodservers, 0, 0, 1);
+static VAR(shownamesinbrowser, 0, 0, 1);
+static VARP(showminremain, 0, 0, 1);
+static VARP(serversortpreferofficial, 0, 1, 1);
 
-void serversortprepare()
+static void serversortprepare()
 {
     loopv(servers)
     {
@@ -664,7 +660,7 @@ void serversortprepare()
     }
 }
 
-int sicompare(serverinfo **ap, serverinfo **bp)
+static int sicompare(serverinfo **ap, serverinfo **bp)
 {
     serverinfo *a = *ap, *b = *bp;
     int dir = serversortdir ? -1 : 1;
@@ -725,11 +721,11 @@ int sicompare(serverinfo **ap, serverinfo **bp)
 }
 
 void *servmenu = NULL, *searchmenu = NULL, *serverinfomenu = NULL;
-vector<char *> namelists;
+static vector<char *> namelists;
 
-string cursearch, cursearchuc;
+static string cursearch, cursearchuc;
 
-void searchnickname(const char *name)
+static void searchnickname(const char *name)
 {
     if(!name || !name[0]) return;
     copystring(cursearch, name);
@@ -741,7 +737,7 @@ COMMAND(searchnickname, "s");
 
 VAR(showallservers, 0, 1, 1);
 
-bool matchplayername(const char *name)
+static bool matchplayername(const char *name)
 {
     static string nameuc;
     copystring(nameuc, name);
@@ -749,13 +745,13 @@ bool matchplayername(const char *name)
     return strstr(nameuc, cursearchuc) != NULL;
 }
 
-VARP(serverbrowserhideip, 0, 0, 2);
-VARP(serverbrowserhidefavtag, 0, 1, 2);
-VAR(showweights, 0, 0, 1);
-VARP(hidefavicons, 0, 0, 1);
+static VARP(serverbrowserhideip, 0, 0, 2);
+static VARP(serverbrowserhidefavtag, 0, 1, 2);
+static VAR(showweights, 0, 0, 1);
+static VARP(hidefavicons, 0, 0, 1);
 
-vector<char *> favcats;
-const char *fc_als[] = { "weight", "tag", "desc", "red", "green", "blue", "alpha", "keys", "ignore", "image" };
+static vector<char *> favcats;
+static const char *fc_als[] = { "weight", "tag", "desc", "red", "green", "blue", "alpha", "keys", "ignore", "image" };
 enum { FC_WEIGHT = 0, FC_TAG, FC_DESC, FC_RED, FC_GREEN, FC_BLUE, FC_ALPHA, FC_KEYS, FC_IGNORE, FC_IMAGE, FC_NUM };
 
 VARF(showonlyfavourites, 0, 0, 100,
@@ -767,7 +763,7 @@ VARF(showonlyfavourites, 0, 0, 100,
     }
 });
 
-const char *favcatargname(const char *refdes, int par)
+static const char *favcatargname(const char *refdes, int par)
 {
     static string text[3];
     static int i = 0;
@@ -777,7 +773,7 @@ const char *favcatargname(const char *refdes, int par)
     return text[i];
 }
 
-void addfavcategory(const char *refdes)
+static void addfavcategory(const char *refdes)
 {
     string text, val;
     char alx[FC_NUM];
@@ -802,14 +798,14 @@ void addfavcategory(const char *refdes)
     intret(favcats.length());
 }
 
-void listfavcats()
+static void listfavcats()
 {
     const char *str = conc(&favcats[0], favcats.length(), true);
     result(str);
     delete [] str;
 }
 
-bool favcatcheckkey(serverinfo &si, const char *key)
+static bool favcatcheckkey(serverinfo &si, const char *key)
 { // IP:port, #gamemode ,%mapname, desc
     string text, keyuc;
     if(isdigit(*key)) // IP
@@ -849,7 +845,7 @@ bool favcatcheckkey(serverinfo &si, const char *key)
     return false;
 }
 
-const char *favcatcheck(serverinfo &si, const char *ckeys, char *autokeys = NULL)
+static const char *favcatcheck(serverinfo &si, const char *ckeys, char *autokeys = NULL)
 {
     if(!ckeys) return NULL;
     static char *nkeys = NULL;
@@ -877,7 +873,7 @@ const char *favcatcheck(serverinfo &si, const char *ckeys, char *autokeys = NULL
     return res ? nkeys : NULL;
 }
 
-void serverbrowseralternativeviews(int shiftdirection)
+static void serverbrowseralternativeviews(int shiftdirection)
 {
     const char *ckeys = getalias("serverbrowseraltviews");
     if(!ckeys) return;
@@ -901,9 +897,9 @@ void serverbrowseralternativeviews(int shiftdirection)
     showonlyfavourites = 0;
 }
 
-vector<const char *> favcattags;
+static vector<const char *> favcattags;
 
-bool assignserverfavourites()
+static bool assignserverfavourites()
 {
     int alxn[FC_NUM];
     const char *alx[FC_NUM], *sep = " \t\n\r";
@@ -1301,8 +1297,6 @@ void clearservers()
 }
 
 #define RETRIEVELIMIT 5000
-extern size_t write_callback(void *ptr, size_t size, size_t nmemb, FILE *stream);
-extern char *global_name;
 bool cllock = false, clfail = false;
 
 struct resolver_data
@@ -1311,7 +1305,7 @@ struct resolver_data
     string text;
 };
 
-int progress_callback_retrieveservers(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow)
+static int progress_callback_retrieveservers(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow)
 {
     resolver_data *rd = (resolver_data *)clientp;
     rd->timeout = SDL_GetTicks() - rd->starttime;
@@ -1324,7 +1318,7 @@ int progress_callback_retrieveservers(void *clientp, double dltotal, double dlno
     return 0;
 }
 
-void retrieveservers(vector<char> &data)
+static void retrieveservers(vector<char> &data)
 {
     if(mastertype == AC_MASTER_HTTP)
     {
@@ -1440,7 +1434,7 @@ void retrieveservers(vector<char> &data)
     }
 }
 
-VARP(masterupdatefrequency, 1, 60*60, 24*60*60);
+static VARP(masterupdatefrequency, 1, 60*60, 24*60*60);
 
 void updatefrommaster(int force)
 {

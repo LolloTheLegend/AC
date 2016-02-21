@@ -1,5 +1,8 @@
 // all server side masterserver and pinging functionality
 
+#include "common.h"
+#include "serverms.h"
+#include "server.h"
 #include "cube.h"
 
 #ifdef STANDALONE
@@ -16,15 +19,15 @@ int connectwithtimeout(ENetSocket sock, const char *hostname, ENetAddress &remot
 }
 #endif
 
-ENetSocket mastersock = ENET_SOCKET_NULL;
-ENetAddress masteraddress = { ENET_HOST_ANY, ENET_PORT_ANY }, serveraddress = { ENET_HOST_ANY, ENET_PORT_ANY };
+static ENetSocket mastersock = ENET_SOCKET_NULL;
+static ENetAddress masteraddress = { ENET_HOST_ANY, ENET_PORT_ANY }, serveraddress = { ENET_HOST_ANY, ENET_PORT_ANY };
 string mastername = AC_MASTER_URI;
 int masterport = AC_MASTER_PORT, mastertype = AC_MASTER_HTTP;
-int lastupdatemaster = 0;
-vector<char> masterout, masterin;
-int masteroutpos = 0, masterinpos = 0;
+static int lastupdatemaster = 0;
+static vector<char> masterout, masterin;
+static int masteroutpos = 0, masterinpos = 0;
 
-void disconnectmaster()
+static void disconnectmaster()
 {
     if(mastersock == ENET_SOCKET_NULL) return;
 
@@ -44,7 +47,6 @@ void disconnectmaster()
 ENetSocket connectmaster()
 {
     if(!mastername[0]) return ENET_SOCKET_NULL;
-    extern servercommandline scl;
     if(scl.maxclients>MAXCL) { logline(ACLOG_WARNING, "maxclient exceeded: cannot register"); return ENET_SOCKET_NULL; }
 
     if(masteraddress.host == ENET_HOST_ANY)
@@ -69,7 +71,7 @@ ENetSocket connectmaster()
     return sock;
 }
 
-bool requestmaster(const char *req)
+static bool requestmaster(const char *req)
 {
     if(mastersock == ENET_SOCKET_NULL)
     {
@@ -87,9 +89,7 @@ bool requestmasterf(const char *fmt, ...)
     return requestmaster(req);
 }
 
-extern void processmasterinput(const char *cmd, int cmdlen, const char *args);
-
-void processmasterinput()
+static void processmasterinput()
 {
     if(masterinpos >= masterin.length()) return;
 
@@ -123,7 +123,7 @@ void processmasterinput()
     }
 }
 
-void flushmasteroutput()
+static void flushmasteroutput()
 {
     if(masterout.empty()) return;
 
@@ -143,7 +143,7 @@ void flushmasteroutput()
     else disconnectmaster();
 }
 
-void flushmasterinput()
+static void flushmasterinput()
 {
     if(masterin.length() >= masterin.capacity())
         masterin.reserve(4096);
@@ -160,9 +160,6 @@ void flushmasterinput()
     else disconnectmaster();
 }
 
-extern char *global_name;
-extern int interm;
-extern int totalclients;
 
 // send alive signal to masterserver after 40 minutes of uptime and if currently in intermission (so theoretically <= 1 hour)
 // TODO?: implement a thread to drop this "only in intermission" business, we'll need it once AUTH gets active!
@@ -176,8 +173,7 @@ static inline void updatemasterserver(int millis, int port)
     }
 }
 
-ENetSocket pongsock = ENET_SOCKET_NULL, lansock = ENET_SOCKET_NULL;
-extern int getpongflags(enet_uint32 ip);
+static ENetSocket pongsock = ENET_SOCKET_NULL, lansock = ENET_SOCKET_NULL;
 
 void serverms(int mode, int numplayers, int minremain, char *smapname, int millis, const ENetAddress &localaddr, int *mnum, int *msend, int *mrec, int *cnum, int *csend, int *crec, int protocol_version)
 {
@@ -222,7 +218,6 @@ void serverms(int mode, int numplayers, int minremain, char *smapname, int milli
         if(getint(pi) != 0) // std pong
         {
             extern struct servercommandline scl;
-            extern string servdesc_current;
             (*mnum)++; *mrec += len; std = true;
             putint(po, protocol_version);
             putint(po, mode);
@@ -239,28 +234,24 @@ void serverms(int mode, int numplayers, int minremain, char *smapname, int milli
                 {
                     case EXTPING_NAMELIST:
                     {
-                        extern void extping_namelist(ucharbuf &p);
                         putint(po, query);
                         extping_namelist(po);
                         break;
                     }
                     case EXTPING_SERVERINFO:
                     {
-                        extern void extping_serverinfo(ucharbuf &pi, ucharbuf &po);
                         putint(po, query);
                         extping_serverinfo(pi, po);
                         break;
                     }
                     case EXTPING_MAPROT:
                     {
-                        extern void extping_maprot(ucharbuf &po);
                         putint(po, query);
                         extping_maprot(po);
                         break;
                     }
                     case EXTPING_UPLINKSTATS:
                     {
-                        extern void extping_uplinkstats(ucharbuf &po);
                         putint(po, query);
                         extping_uplinkstats(po);
                         break;
@@ -360,3 +351,173 @@ void servermsinit(const char *master, const char *ip, int infoport, bool listen)
         else enet_socket_set_option(lansock, ENET_SOCKOPT_NONBLOCK, 1);
     }
 }
+
+
+
+
+
+
+
+bool servercommandline::checkarg(const char *arg)
+{
+    if(!strncmp(arg, "assaultcube://", 13)) return false;
+    else if(arg[0] != '-' || arg[1] == '\0') return false;
+    const char *a = arg + 2 + strspn(arg + 2, " ");
+    int ai = atoi(a);
+    // client: dtwhzbsave
+    switch(arg[1])
+    {
+        case '-':
+                if(!strncmp(arg, "--demofilenameformat=", 21))
+                {
+                    demofilenameformat = arg+21;
+                }
+                else if(!strncmp(arg, "--demotimestampformat=", 22))
+                {
+                    demotimestampformat = arg+22;
+                }
+                else if(!strncmp(arg, "--demotimelocal=", 16))
+                {
+                    int ai = atoi(arg+16);
+                    demotimelocal = ai == 0 ? 0 : 1;
+                }
+                else if(!strncmp(arg, "--masterport=", 13))
+                {
+                    int ai = atoi(arg+13);
+                    masterport = ai == 0 ? AC_MASTER_PORT : ai;
+                }
+                else if(!strncmp(arg, "--mastertype=", 13))
+                {
+                    int ai = atoi(arg+13);
+                    mastertype = ai > 0 ? 1 : 0;
+                }
+                else return false;
+                break;
+        case 'u': uprate = ai; break;
+        case 'f': if(ai > 0 && ai < 65536) serverport = ai; break;
+        case 'i': ip     = a; break;
+        case 'm': master = a; break;
+        case 'N': logident = a; break;
+        case 'l': loggamestatus = ai != 0; break;
+        case 'F': if(isdigit(*a) && ai >= 0 && ai <= 7) syslogfacility = ai; break;
+        case 'T': logtimestamp = true; break;
+        case 'L':
+            switch(*a)
+            {
+                case 'F': filethres = atoi(a + 1); break;
+                case 'S': syslogthres = atoi(a + 1); break;
+            }
+            break;
+        case 'A': if(*a) adminonlymaps.add(a); break;
+        case 'c': if(ai > 0) maxclients = min(ai, MAXCLIENTS); break;
+        case 'k':
+        {
+            if(arg[2]=='A' && arg[3]!='\0')
+            {
+                if ((ai = atoi(&arg[3])) >= 30) afk_limit = ai * 1000;
+                else afk_limit = 0;
+            }
+            else if(arg[2]=='B' && arg[3]!='\0')
+            {
+                if ((ai = atoi(&arg[3])) >= 0) ban_time = ai * 60 * 1000;
+                else ban_time = 0;
+            }
+            else if(ai < 0) kickthreshold = ai;
+            break;
+        }
+        case 'y': if(ai < 0) banthreshold = ai; break;
+        case 'x': adminpasswd = a; break;
+        case 'p': serverpassword = a; break;
+        case 'D':
+        {
+            if(arg[2]=='I')
+            {
+                demo_interm = true;
+            }
+            else if(ai > 0) maxdemos = ai; break;
+        }
+        case 'W': demopath = a; break;
+        case 'r': maprot = a; break;
+        case 'X': pwdfile = a; break;
+        case 'B': blfile = a; break;
+        case 'K': nbfile = a; break;
+        case 'E': killmessages = a; break;
+        case 'I': infopath = a; break;
+        case 'o': filterrichtext(motd, a); break;
+        case 'O': motdpath = a; break;
+        case 'g': forbidden = a; break;
+        case 'n':
+        {
+            char *t = servdesc_full;
+            switch(*a)
+            {
+                case '1': t = servdesc_pre; a += 1 + strspn(a + 1, " "); break;
+                case '2': t = servdesc_suf; a += 1 + strspn(a + 1, " "); break;
+            }
+            filterrichtext(t, a);
+            filtertext(t, t, FTXT__SERVDESC);
+            break;
+        }
+        case 'P': concatstring(voteperm, a); break;
+        case 'M': concatstring(mapperm, a); break;
+        case 'Z': if(ai >= 0) incoming_limit = ai; break;
+        case 'V': verbose++; break;
+        case 'C': if(*a && clfilenesting < 3)
+        {
+            serverconfigfile cfg;
+            cfg.init(a);
+            cfg.load();
+            int line = 1;
+            clfilenesting++;
+            if(cfg.buf)
+            {
+                printf("reading commandline parameters from file '%s'\n", a);
+                for(char *p = cfg.buf, *l; p < cfg.buf + cfg.filelen; line++)
+                {
+                    l = p; p += strlen(p) + 1;
+                    for(char *c = p - 2; c > l; c--) { if(*c == ' ') *c = '\0'; else break; }
+                    l += strspn(l, " \t");
+                    if(*l && !this->checkarg(newstring(l)))
+                        printf("unknown parameter in file '%s', line %d: '%s'\n", cfg.filename, line, l);
+                }
+            }
+            else printf("failed to read file '%s'\n", a);
+            clfilenesting--;
+            break;
+        }
+        default: return false;
+    }
+    return true;
+}
+
+void serverconfigfile::init(const char *name)
+{
+    copystring(filename, name);
+    path(filename);
+    read();
+}
+
+bool serverconfigfile::load()
+{
+    DELETEA(buf);
+    buf = loadfile(filename, &filelen);
+    if(!buf)
+    {
+        logline(ACLOG_INFO,"could not read config file '%s'", filename);
+        return false;
+    }
+    char *p;
+    if('\r' != '\n') // this is not a joke!
+    {
+        char c = strchr(buf, '\n') ? ' ' : '\n'; // in files without /n substitute /r with /n, otherwise remove /r
+        for(p = buf; (p = strchr(p, '\r')); p++) *p = c;
+    }
+    for(p = buf; (p = strstr(p, "//")); ) // remove comments
+    {
+        while(*p != '\n' && *p != '\0') p++[0] = ' ';
+    }
+    for(p = buf; (p = strchr(p, '\t')); p++) *p = ' ';
+    for(p = buf; (p = strchr(p, '\n')); p++) *p = '\0'; // one string per line
+    return true;
+}
+
