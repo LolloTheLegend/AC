@@ -111,6 +111,23 @@ struct block { int x, y, xs, ys, h; short p[5]; };
 
 struct vertex { float u, v, x, y, z; uchar r, g, b, a; };
 
+extern sqr *world, *wmip[];             // map data, the mips are sequential 2D arrays in memory
+extern hashtable<char *, enet_uint32> mapinfo;
+extern hashtable<char *, enet_uint32> &resdata;
+
+void remip(const block &b, int level = 0);
+void remipmore(const block &b, int level = 0);
+int closestent();
+int findtype(char *what);
+entity *newentity(int index, int x, int y, int z, char *what, int v1, int v2, int v3, int v4);
+int findentity(int type, int index = 0);
+int findentity(int type, int index, uchar attr2);
+void setupworld(int factor);
+void sqrdefault(sqr *s);
+bool worldbordercheck(int x1, int x2, int y1, int y2, int z1, int z2);
+void calcmapdims();
+bool empty_world(int factor, bool force);
+void mapmrproper(bool manual);
 
 #endif	// WORLD_H
 

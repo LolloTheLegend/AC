@@ -117,9 +117,9 @@ void remipmore(const block &b, int level)
 
 static int clentsel = 0, clenttype = NOTUSED;
 
-void nextclosestent(void) { clentsel++; }
+static void nextclosestent(void) { clentsel++; }
 
-void closestenttype(char *what)
+static void closestenttype(char *what)
 {
     clenttype = what[0] ? findtype(what) : NOTUSED;
 }
@@ -165,7 +165,7 @@ int closestent()        // used for delent and edit mode ent display
     return best;
 }
 
-void entproperty(int prop, int amount)
+static void entproperty(int prop, int amount)
 {
     int n = closestent();
     if(n<0) return;
@@ -196,7 +196,7 @@ void entproperty(int prop, int amount)
 
 hashtable<char *, enet_uint32> mapinfo, &resdata = mapinfo;
 
-void getenttype()
+static void getenttype()
 {
     int e = closestent();
     if(e<0) return;
@@ -205,7 +205,7 @@ void getenttype()
     result(entnames[type]);
 }
 
-void getentattr(int *attr)
+static void getentattr(int *attr)
 {
     int e = closestent();
     if(e>=0) switch(*attr)
@@ -221,7 +221,7 @@ void getentattr(int *attr)
 COMMAND(getenttype, "");
 COMMAND(getentattr, "i");
 
-void delent()
+static void delent()
 {
     int n = closestent();
     if(n<0) { conoutf("no more entities"); return; }
@@ -316,7 +316,7 @@ entity *newentity(int index, int x, int y, int z, char *what, int v1, int v2, in
     return index<0 ? &ents.last() : &ents[index];
 }
 
-void entset(char *what, int *a1, int *a2, int *a3, int *a4)
+static void entset(char *what, int *a1, int *a2, int *a3, int *a4)
 {
     int n = closestent();
     if(n>=0)
@@ -328,7 +328,7 @@ void entset(char *what, int *a1, int *a2, int *a3, int *a4)
 
 COMMAND(entset, "siiii");
 
-void clearents(char *name)
+static void clearents(char *name)
 {
     int type = findtype(name);
     if(noteditmode("clearents") || multiplayer()) return;
@@ -347,14 +347,14 @@ void clearents(char *name)
 
 COMMAND(clearents, "s");
 
-void scalecomp(uchar &c, int intens)
+static void scalecomp(uchar &c, int intens)
 {
     int n = c*intens/100;
     if(n>255) n = 255;
     c = n;
 }
 
-void scalelights(int f, int intens)
+static void scalelights(int f, int intens)
 {
     if(multiplayer()) return;
     loopv(ents)
@@ -391,7 +391,7 @@ int findentity(int type, int index, uchar attr2)
     return -1;
 }
 
-void nextplayerstart(int *type)
+static void nextplayerstart(int *type)
 {
     static int cycle = -1;
 
@@ -568,9 +568,9 @@ bool empty_world(int factor, bool force)    // main empty world creation routine
     return true;
 }
 
-void mapenlarge()  { if(empty_world(-1, false)) addmsg(SV_NEWMAP, "ri", -1); }
-void mapshrink()   { if(empty_world(-2, false)) addmsg(SV_NEWMAP, "ri", -2); }
-void newmap(int *i)
+static void mapenlarge()  { if(empty_world(-1, false)) addmsg(SV_NEWMAP, "ri", -1); }
+static void mapshrink()   { if(empty_world(-2, false)) addmsg(SV_NEWMAP, "ri", -2); }
+static void newmap(int *i)
 {
     if(m_botmode) { conoutf("newmap not supported in bot mode"); return; }
     if(empty_world(*i, false))
@@ -589,7 +589,7 @@ COMMANDN(recalc, calclight, "");
 COMMAND(delent, "");
 COMMANDF(entproperty, "ii", (int *p, int *a) { entproperty(*p, *a); });
 
-void countperfectmips(int mip, int xx, int yy, int bs, int *stats)
+static void countperfectmips(int mip, int xx, int yy, int bs, int *stats)
 {
     int mfactor = sfactor - mip;
     if(!bs) bs = 1 << mfactor;

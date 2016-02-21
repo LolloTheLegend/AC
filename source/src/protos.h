@@ -5,7 +5,7 @@
 
 #include "world.h"
 
-extern sqr *world, *wmip[];             // map data, the mips are sequential 2D arrays in memory
+
 extern header hdr;                      // current map header
 extern int sfactor, ssize;              // ssize = 2^sfactor
 extern int cubicsize, mipsize;          // cubicsize = ssize^2
@@ -13,7 +13,6 @@ extern vector<bounceent *> bounceents;
 extern int interm;
 extern int gamespeed;
 extern int stenciling, stencilshadow;
-extern hashtable<char *, enet_uint32> mapinfo;
 extern int numspawn[3], maploaded, numflagspawn[2];
 extern int verbose;
 
@@ -212,19 +211,6 @@ extern void displayvote(votedisplayinfo *v);
 extern void voteresult(int v);
 
 // world
-extern void setupworld(int factor);
-extern void sqrdefault(sqr *s);
-extern bool worldbordercheck(int x1, int x2, int y1, int y2, int z1, int z2);
-extern void calcmapdims();
-extern bool empty_world(int factor, bool force);
-extern void remip(const block &b, int level = 0);
-extern void remipmore(const block &b, int level = 0);
-extern int closestent();
-extern int findtype(char *what);
-extern int findentity(int type, int index = 0);
-extern int findentity(int type, int index, uchar attr2);
-extern entity *newentity(int index, int x, int y, int z, char *what, int v1, int v2, int v3, int v4);
-extern void mapmrproper(bool manual);
 
 // worldlight
 extern int lastcalclight;
