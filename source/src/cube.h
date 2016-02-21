@@ -45,6 +45,7 @@
 #include "renderhud.h"
 #include "rendermodel.h"
 #include "renderparticles.h"
+#include "rendertext.h"
 #include "protos.h"                     // external function decls
 
 #endif

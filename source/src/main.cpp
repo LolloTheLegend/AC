@@ -648,8 +648,6 @@ void resetgl()
     setupscreen(usedcolorbits, useddepthbits, usedfsaa);
     gl_init(scr_w, scr_h, usedcolorbits, useddepthbits, usedfsaa);
 
-    extern void reloadfonts();
-    extern void reloadtextures();
     c2skeepalive();
     if(!reloadtexture(*notexture) ||
        !reloadtexture("packages/misc/startscreen.png"))
