@@ -60,8 +60,6 @@ struct authkey // for AUTH
 };
 
 
-extern bool needscoresreorder;
-
 struct mitem
 {
     struct gmenu *parent;
@@ -223,15 +221,6 @@ extern void serveropcommand(int cmd, int arg1);
 
 extern void displayvote(votedisplayinfo *v);
 extern void voteresult(int v);
-
-// scoreboard
-struct discscore { int team, flags, frags, deaths, points; char name[MAXNAMELEN + 1]; };
-extern vector<discscore> discscores;
-extern void showscores(bool on);
-extern void renderscores(void *menu, bool init);
-extern const char *asciiscores(bool destjpg = false);
-extern void consolescores();
-extern void teamflagscores(int &team1, int &team2);
 
 // world
 extern void setupworld(int factor);

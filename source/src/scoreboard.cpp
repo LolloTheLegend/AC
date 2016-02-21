@@ -1,5 +1,6 @@
 // creation of scoreboard pseudo-menu
 
+#include "scoreboard.h"
 #include "cube.h"
 #define SCORERATIO(F,D) (float)(F >= 0 ? F : 0) / (float)(D > 0 ? D : 1)
 
@@ -14,6 +15,7 @@ void showscores(bool on)
 
 COMMANDF(showscores, "i", (int *on) { showscores(*on != 0); });
 
+// TODO: Lollo fix this VARFP utter crap
 VARFP(sc_flags,      0,  0, 100, needscoresreorder = true);
 VARFP(sc_frags,      0,  1, 100, needscoresreorder = true);
 VARFP(sc_deaths,    -1,  2, 100, needscoresreorder = true);
@@ -37,7 +39,7 @@ struct coldata
 
 // FIXME ? if two columns share teh same priority
 // they will be sorted by the order they were added with addcol
-int sortcolumns(coldata *col_a, coldata *col_b)
+static int sortcolumns(coldata *col_a, coldata *col_b)
 {
     if(col_a->priority > col_b->priority) return 1;
     else if(col_a->priority < col_b->priority) return -1;
@@ -165,21 +167,7 @@ static int discscorecmp(const discscore *x, const discscore *y)
     return strcmp(x->name, y->name);
 }
 
-// const char *scoreratio(int frags, int deaths, int precis = 0)
-// {
-//     static string res;
-//     float ratio = SCORERATIO(frags, deaths);
-//     int precision = precis;
-//     if(!precision)
-//     {
-//         if(ratio<10.0f) precision = 2;
-//         else if(ratio<100.0f) precision = 1;
-//     }
-//     formatstring(res)("%.*f", precision, ratio);
-//     return res;
-// }
-
-void renderdiscscores(int team)
+static void renderdiscscores(int team)
 {
     loopv(discscores) if(team == team_group(discscores[i].team))
     {
@@ -199,9 +187,9 @@ void renderdiscscores(int team)
     }
 }
 
-VARP(cncolumncolor, 0, 5, 9);
+static VARP(cncolumncolor, 0, 5, 9);
 
-void renderscore(playerent *d)
+static void renderscore(playerent *d)
 {
     const char *status = "";
     string lagping;
@@ -233,9 +221,9 @@ void renderscore(playerent *d)
     line.addcol(sc_name, "\fs%s%s\fr%s", status, colorname(d), ign);
 }
 
-int totalplayers = 0;
+static int totalplayers = 0;
 
-int renderteamscore(teamscore *t)
+static int renderteamscore(teamscore *t)
 {
     if(!scorelines.empty()) // space between teams
     {
@@ -264,12 +252,9 @@ int renderteamscore(teamscore *t)
     return n;
 }
 
-extern bool watchingdemo;
-
-void reorderscorecolumns()
+static void reorderscorecolumns()
 {
     needscoresreorder = false;
-    extern void *scoremenu;
     sline sscore;
 
     if(m_flags) sscore.addcol(sc_flags, "flags");
@@ -424,7 +409,7 @@ void renderscores(void *menu, bool init)
 
 #define MAXJPGCOM 65533  // maximum JPEG comment length
 
-void addstr(char *dest, const char *src) { if(strlen(dest) + strlen(src) < MAXJPGCOM) strcat(dest, src); }
+static inline void addstr(char *dest, const char *src) { if(strlen(dest) + strlen(src) < MAXJPGCOM) strcat(dest, src); }
 
 const char *asciiscores(bool destjpg)
 {
@@ -509,7 +494,7 @@ void consolescores()
     printf("%s\n", asciiscores());
 }
 
-void winners()
+static void winners()
 {
     string winners = "";
     vector<playerent *> scores;

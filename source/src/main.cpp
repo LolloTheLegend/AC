@@ -1169,6 +1169,7 @@ int main(int argc, char **argv)
     audiomgr.initsound();
 
     initlog("cfg");
+    // TODO: Lollo fix this extern utter crap
     extern void *scoremenu, *servmenu, *searchmenu, *serverinfomenu, *kickmenu, *banmenu, *forceteammenu, *giveadminmenu, *docmenu, *applymenu, *downloaddemomenu;
     scoremenu = addmenu("score", "columns", false, renderscores, NULL, false, true);
     servmenu = addmenu("server", NULL, true, refreshservers, serverskey);
