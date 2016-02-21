@@ -51,6 +51,7 @@
 #include "scoreboard.h"
 #include "shadow.h"
 #include "water.h"
+#include "wizard.h"
 #include "protos.h"                     // external function decls
 
 #endif
