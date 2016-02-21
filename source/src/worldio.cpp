@@ -3,9 +3,9 @@
 #include "cube.h"
 
 #define DEBUGCOND (worldiodebug==1)
-VARP(worldiodebug, 0, 0, 1);
+static VARP(worldiodebug, 0, 0, 1);
 
-void backup(char *name, char *backupname)
+static void backup(char *name, char *backupname)
 {
     string backupfile;
     copystring(backupfile, findfile(backupname, "wb"));
@@ -49,9 +49,9 @@ const char *setnames(const char *name)
 // the reason it is done on save is to reduce the amount spend in the mipmapper (as that is done
 // in realtime).
 
-inline bool nhf(sqr *s) { return s->type!=FHF && s->type!=CHF; }
+static inline bool nhf(sqr *s) { return s->type!=FHF && s->type!=CHF; }
 
-void voptimize()        // reset vdeltas on non-hf cubes
+static void voptimize()        // reset vdeltas on non-hf cubes
 {
     loop(y, ssize) loop(x, ssize)
     {
@@ -275,16 +275,16 @@ struct headerextra
     ~headerextra() { DELETEA(data); }
     headerextra *duplicate() { return new headerextra(len, flags, data); }
 };
-vector<headerextra *> headerextras;
+static vector<headerextra *> headerextras;
 
 enum { HX_UNUSED = 0, HX_MAPINFO, HX_MODEINFO, HX_ARTIST, HX_EDITUNDO, HX_CONFIG, HX_VANTAGEPOINT, HX_NUM, HX_TYPEMASK = 0x3f, HX_FLAG_PERSIST = 0x40 };
-const char *hx_names[] = { "unused", "mapinfo", "modeinfo", "artist", "editundo", "config", "vantage point", "unknown" };
+static const char *hx_names[] = { "unused", "mapinfo", "modeinfo", "artist", "editundo", "config", "vantage point", "unknown" };
 #define addhxpacket(p, len, flags, buffer) { if(p.length() + len < MAXHEADEREXTRA) { putuint(p, len); putuint(p, flags); p.put(buffer, len); } }
 #define hx_name(t) hx_names[min((t) & HX_TYPEMASK, int(HX_NUM))]
 
 void clearheaderextras() { loopvrev(headerextras) delete headerextras.remove(i); }
 
-void deleteheaderextra(int n) { if(headerextras.inrange(n)) delete headerextras.remove(n); }
+static void deleteheaderextra(int n) { if(headerextras.inrange(n)) delete headerextras.remove(n); }
 
 COMMANDF(listheaderextras, "", ()
 {
@@ -292,13 +292,13 @@ COMMANDF(listheaderextras, "", ()
     if(!headerextras.length()) conoutf("no extra header records found");
 });
 
-int findheaderextra(int type)
+static int findheaderextra(int type)
 {
     loopv(headerextras) if((headerextras[i]->flags & HX_TYPEMASK) == type) return i;
     return -1;
 }
 
-void unpackheaderextra(uchar *buf, int len)  // break the extra data from the mapheader into its pieces
+static void unpackheaderextra(uchar *buf, int len)  // break the extra data from the mapheader into its pieces
 {
     ucharbuf p(buf, len);
     DEBUG("unpacking " << len << " bytes");
@@ -311,7 +311,7 @@ void unpackheaderextra(uchar *buf, int len)  // break the extra data from the ma
     }
 }
 
-void parseheaderextra(bool clearnonpersist = true, int ignoretypes = 0)  // parse all headerextra packets, delete the nonpersistent ones (like editundos)
+static void parseheaderextra(bool clearnonpersist = true, int ignoretypes = 0)  // parse all headerextra packets, delete the nonpersistent ones (like editundos)
 {
     DEBUG("parsing " << headerextras.length() << " packets");
     loopv(headerextras)
@@ -342,7 +342,7 @@ void parseheaderextra(bool clearnonpersist = true, int ignoretypes = 0)  // pars
     }
 }
 
-ucharbuf packheaderextras(int ignoretypes = 0)  // serialise all extra data packets to save with the map header
+static ucharbuf packheaderextras(int ignoretypes = 0)  // serialise all extra data packets to save with the map header
 {
     vector<uchar> buf, tmp;
     loopv(headerextras) if(!(ignoretypes & (1 << (headerextras[i]->flags & HX_TYPEMASK))))
@@ -362,7 +362,7 @@ ucharbuf packheaderextras(int ignoretypes = 0)  // serialise all extra data pack
     return q;
 }
 
-bool embedconfigfile()
+static bool embedconfigfile()
 {
     if(securemapcheck(getclientmap())) return false;
     setnames(getclientmap());
@@ -380,7 +380,7 @@ bool embedconfigfile()
 }
 COMMANDF(embedconfigfile, "", () { if(embedconfigfile()) save_world(getclientmap()); });
 
-void extractconfigfile()
+static void extractconfigfile()
 {
     if(securemapcheck(getclientmap())) return;
     setnames(getclientmap());
@@ -402,7 +402,7 @@ void extractconfigfile()
 }
 COMMAND(extractconfigfile, "");
 
-bool clearvantagepoint()
+static bool clearvantagepoint()
 {
     bool yep = false;
     for(int n; (n = findheaderextra(HX_VANTAGEPOINT)) >= 0; yep = true) deleteheaderextra(n);
@@ -411,7 +411,7 @@ bool clearvantagepoint()
 }
 COMMANDF(clearvantagepoint, "", () { if(!noteditmode("clearvantagepoint") && !multiplayer() && clearvantagepoint()) conoutf("cleared vantage point"); });
 
-void setvantagepoint()
+static void setvantagepoint()
 {
     if(noteditmode("setvantagepoint") || multiplayer()) return;
     clearvantagepoint();
@@ -424,7 +424,7 @@ void setvantagepoint()
 }
 COMMAND(setvantagepoint, "");
 
-bool gotovantagepoint()
+static bool gotovantagepoint()
 {
     short p[5];
     int n = findheaderextra(HX_VANTAGEPOINT);
@@ -447,9 +447,9 @@ bool gotovantagepoint()
 }
 COMMANDF(gotovantagepoint, "", () { if(editmode) gotovantagepoint(); });
 
-VAR(advancemaprevision, 1, 1, 100);
+static VAR(advancemaprevision, 1, 1, 100);
 
-VARP(mapbackupsonsave, 0, 1, 1);
+static VARP(mapbackupsonsave, 0, 1, 1);
 
 void save_world(char *mname, bool skipoptimise, bool addcomfort)
 {
@@ -515,11 +515,11 @@ void save_world(char *mname, bool skipoptimise, bool addcomfort)
     unsavededits = 0;
     conoutf("wrote map file %s %s%s", cgzname, skipoptimise ? "without optimisation" : "(optimised)", addcomfort ? " (including editing history)" : "");
 }
-VARP(preserveundosonsave, 0, 0, 1);
+static VARP(preserveundosonsave, 0, 0, 1);
 COMMANDF(savemap, "s", (char *name) { save_world(name, preserveundosonsave && editmode, preserveundosonsave && editmode); } );
 COMMANDF(savemapoptimised, "s", (char *name) { save_world(name, false, false); } );
 
-void showmapdims()
+static void showmapdims()
 {
     conoutf("  min X|Y|Z: %3d : %3d : %3d", mapdims.x1, mapdims.y1, mapdims.minfloor);
     conoutf("  max X|Y|Z: %3d : %3d : %3d", mapdims.x2, mapdims.y2, mapdims.maxceil);
@@ -528,12 +528,13 @@ void showmapdims()
 COMMAND(showmapdims, "");
 
 int numspawn[3], maploaded = 0, numflagspawn[2];
-VAR(curmaprevision, 1, 0, 0);
+static VAR(curmaprevision, 1, 0, 0);
 
+// TODO: Lollo fix these externs crap
 extern int Mv, Ma, Hhits;
 extern float Mh;
 
-void rebuildtexlists()  // checks the texlists, if they still contain all possible textures
+static void rebuildtexlists()  // checks the texlists, if they still contain all possible textures
 {
     short h[256];
     vector<uchar> missing;
@@ -770,7 +771,7 @@ bool load_world(char *mname)        // still supports all map formats that have 
 static bool hexbinenabled = false;
 static vector<uchar> hexbin;
 
-void hexbinwrite(stream *f, void *data, int len, bool ascii = true)   // write block of binary data as hex values with up to 24 bytes per line
+static void hexbinwrite(stream *f, void *data, int len, bool ascii = true)   // write block of binary data as hex values with up to 24 bytes per line
 {
     string asc;
     uchar *s = (uchar *) data;
@@ -804,7 +805,7 @@ COMMANDF(hexbinchunk, "v", (char **args, int numargs)      // read up to 24 byte
 
 #define XMAPVERSION  1001001
 
-VARP(persistentxmaps, 0, 1, 1);    // save all xmaps on exit, restore them at game start
+static VARP(persistentxmaps, 0, 1, 1);    // save all xmaps on exit, restore them at game start
 
 struct xmap
 {
@@ -914,9 +915,9 @@ static xmap *bak, *xmjigsaw;                               // only bak needs to 
 #define SPEDIT if(noteditmode("xmap") || multiplayer()) return    // only allowed in non-coop editmode
 #define SPEDITDIFF if(noteditmode("xmap") || multiplayer() || nodiff()) return    // only allowed in non-coop editmode after xmap_diff
 
-bool validxmapname(const char *nick) { if(validmapname(nick)) return true; conoutf("sry, %s is not a valid xmap nickname", nick); return false; }
+static bool validxmapname(const char *nick) { if(validmapname(nick)) return true; conoutf("sry, %s is not a valid xmap nickname", nick); return false; }
 
-void xmapdelete(xmap *&xm)  // make sure, we don't point to deleted xmaps
+static void xmapdelete(xmap *&xm)  // make sure, we don't point to deleted xmaps
 {
     DELETEP(xm);
 }
@@ -929,7 +930,7 @@ void xmapbackup(const char *nickprefix, const char *nick)   // throw away existi
     if(unsavededits) conoutf("\f3stored backup of unsaved edits on map '%s'; to restore, type \"/xmap_restore\"", bak->name);
 }
 
-const char *xmapdescstring(xmap *xm, bool shortform = false)
+static const char *xmapdescstring(xmap *xm, bool shortform = false)
 {
     static string s[2];
     static int toggle;
@@ -939,7 +940,7 @@ const char *xmapdescstring(xmap *xm, bool shortform = false)
     return s[toggle];
 }
 
-xmap *getxmapbynick(const char *nick, int *index = NULL, bool errmsg = true)
+static xmap *getxmapbynick(const char *nick, int *index = NULL, bool errmsg = true)
 {
     if(*nick) loopvrev(xmaps)
     {
@@ -1028,7 +1029,7 @@ COMMANDF(xmap_restore, "s", (const char *nick)     // use xmap as current map
     }
 } );
 
-void restorexmap(char **args, int numargs)   // read an xmap from a cubescript file
+static void restorexmap(char **args, int numargs)   // read an xmap from a cubescript file
 {
     const char *cmdnames[] = { "version", "names", "sizes", "header", "world", "headerextra", "ent", "position" };
     const char cmdnumarg[] = {         3,       2,       3,        0,       0,             1,     8,          5 };
@@ -1098,9 +1099,9 @@ void restorexmap(char **args, int numargs)   // read an xmap from a cubescript f
 COMMAND(restorexmap, "v");
 
 static const char *bakprefix = "(backup)", *xmapspath = "mapediting/xmaps";
-char *xmapfilename(const char *nick, const char *prefix = "") { static defformatstring(fn)("%s/%s%s.xmap", xmapspath, prefix, nick); return path(fn); }
+static char *xmapfilename(const char *nick, const char *prefix = "") { static defformatstring(fn)("%s/%s%s.xmap", xmapspath, prefix, nick); return path(fn); }
 
-void writexmap(xmap *xm, const char *prefix = "")
+static void writexmap(xmap *xm, const char *prefix = "")
 {
     stream *f = openfile(xmapfilename(xm->nick, prefix), "w");
     if(f)
@@ -1118,7 +1119,7 @@ void writeallxmaps()   // at game exit, write all xmaps to cubescript files in m
     if(bak) writexmap(bak, bakprefix);
 }
 
-void loadxmap(const char *nick)
+static void loadxmap(const char *nick)
 {
     DELETEP(xmjigsaw);
     xmjigsaw = new xmap();

@@ -13,7 +13,6 @@ extern vector<bounceent *> bounceents;
 extern int interm;
 extern int gamespeed;
 extern int stenciling, stencilshadow;
-extern int numspawn[3], maploaded, numflagspawn[2];
 extern int verbose;
 
 #define AC_VERSION 1202
@@ -308,21 +307,6 @@ enum
 
 // TODO: Move this to tools.h where it belongs to
 extern mapdim mapdims;
-
-// worldio
-extern const char *setnames(const char *name);
-extern void save_world(char *mname, bool skipoptimise = false, bool addcomfort = false);
-extern bool load_world(char *mname);
-extern void writemap(char *name, int size, uchar *data);
-extern void writecfggz(char *name, int size, int sizegz, uchar *data);
-extern uchar *readmap(char *name, int *size, int *revision);
-extern uchar *readmcfggz(char *name, int *size, int *sizegz);
-extern void rlencodecubes(vector<uchar> &f, sqr *s, int len, bool preservesolids);
-extern void rldecodecubes(ucharbuf &f, sqr *s, int len, int version, bool silent);
-extern void clearheaderextras();
-extern void xmapbackup(const char *nickprefix, const char *nick);
-extern void writeallxmaps();
-extern int loadallxmaps();
 
 // Structure for storing traceresults
 struct traceresult_s
