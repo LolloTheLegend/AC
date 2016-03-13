@@ -43,7 +43,7 @@ x86_64)
   ;;
 esac
 
-if [ -x "${CUBE_DIR}/client" ]
+if [ -x "${CUBE_DIR}/Debug/client" ]
 then
   SYSTEM_NAME=native_
   MACHINE_NAME=
@@ -84,10 +84,10 @@ if [ -x "/sbin/ldconfig" ]; then
   fi
 fi
 
-if [ -x "${CUBE_DIR}/client" ]; then
+if [ -x "${CUBE_DIR}/Debug/client" ]; then
   cd "${CUBE_DIR}"
-  exec "${CUBE_DIR}/client" ${CUBE_OPTIONS} "$@"
-elif [ -e "${CUBE_DIR}/client" ]; then
+  exec "${CUBE_DIR}/Debug/client" ${CUBE_OPTIONS} "$@"
+elif [ -e "${CUBE_DIR}/Debug/client" ]; then
   echo "Insufficient permissons to run AssaultCube."
   echo "Please change (chmod) the AssaultCube client in the bin_unix folder to be readable/executable."
 else

@@ -45,7 +45,7 @@ x86_64)
   ;;
 esac
 
-if [ -x "${CUBE_DIR}/server" ]
+if [ -x "${CUBE_DIR}/Release//server" ]
 then
   SYSTEM_NAME=
   MACHINE_NAME=
@@ -66,12 +66,12 @@ if [ -x "/sbin/ldconfig" ]; then
   fi
 fi
 
-if [ -x "${CUBE_DIR}/bin_unix/${SYSTEM_NAME}${MACHINE_NAME}server" ]; then
+if [ -x "${CUBE_DIR}/Release/server" ]; then
   cd "${CUBE_DIR}"
-  exec "${CUBE_DIR}/bin_unix/${SYSTEM_NAME}${MACHINE_NAME}server" ${CUBE_OPTIONS} ${CUBE_OPTIONFILE} "$@"
-elif [ -e "${CUBE_DIR}/bin_unix/${SYSTEM_NAME}${MACHINE_NAME}server" ]; then
+  exec "${CUBE_DIR}/Release/server" ${CUBE_OPTIONS} ${CUBE_OPTIONFILE} "$@"
+elif [ -e "${CUBE_DIR}/Release/server" ]; then
   echo "Insufficient permissons to run AssaultCube."
-  echo "Please change (chmod) the AssaultCube server in the bin_unix folder to be readable/executable."
+  echo "Please change (chmod) the AssaultCube server in the bin folder to be readable/executable."
 else
   echo "Your platform does not have a pre-compiled AssaultCube server."
   echo "Please follow the following steps to build a native client:"
