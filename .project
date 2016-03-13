@@ -26,7 +26,7 @@
 	</natures>
 	<filteredResources>
 		<filter>
-			<id>1457872518929</id>
+			<id>1457883812063</id>
 			<name></name>
 			<type>26</type>
 			<matcher>
@@ -35,16 +35,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1457872518930</id>
-			<name></name>
-			<type>26</type>
-			<matcher>
-				<id>org.eclipse.ui.ide.multiFilter</id>
-				<arguments>1.0-name-matches-false-false-bot</arguments>
-			</matcher>
-		</filter>
-		<filter>
-			<id>1457872518931</id>
+			<id>1457883812065</id>
 			<name></name>
 			<type>26</type>
 			<matcher>
@@ -53,7 +44,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1457872518932</id>
+			<id>1457883812066</id>
 			<name></name>
 			<type>26</type>
 			<matcher>
@@ -62,7 +53,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1457872518933</id>
+			<id>1457883812067</id>
 			<name></name>
 			<type>26</type>
 			<matcher>
@@ -71,7 +62,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1457872518934</id>
+			<id>1457883812069</id>
 			<name></name>
 			<type>26</type>
 			<matcher>
@@ -80,7 +71,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1457872518935</id>
+			<id>1457883812070</id>
 			<name></name>
 			<type>26</type>
 			<matcher>
@@ -89,7 +80,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1457872518936</id>
+			<id>1457883812071</id>
 			<name></name>
 			<type>26</type>
 			<matcher>
@@ -98,21 +89,21 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1457872416543</id>
-			<name>source</name>
-			<type>26</type>
+			<id>1457883812072</id>
+			<name></name>
+			<type>10</type>
 			<matcher>
 				<id>org.eclipse.ui.ide.multiFilter</id>
-				<arguments>1.0-name-matches-false-false-locale</arguments>
+				<arguments>1.0-name-matches-false-false-bot</arguments>
 			</matcher>
 		</filter>
 		<filter>
-			<id>1457872431775</id>
-			<name>source/doxygen</name>
-			<type>26</type>
+			<id>0</id>
+			<name>doxygen/html</name>
+			<type>13</type>
 			<matcher>
 				<id>org.eclipse.ui.ide.multiFilter</id>
-				<arguments>1.0-name-matches-false-false-html</arguments>
+				<arguments>1.0-name-matches-false-false-index.html</arguments>
 			</matcher>
 		</filter>
 	</filteredResources>

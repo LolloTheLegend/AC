@@ -1,43 +1,11 @@
 cmake_minimum_required(VERSION 3.3)
 
-####################################################################
-######### Not needed: It's here for future development #############
-set (ENET_SRC_DIRECTORY "source/enet")
-
-execute_process (
-    COMMAND shell "uname -s"
-    OUTPUT_VARIABLE "PLATFORM"
-)
-
 find_package(SDL)
 
-add_custom_target (
-    enet-config
-    COMMAND ./configure "--enable-shared=no --enable-static=yes"
-    COMMAND make "all"
-    WORKING_DIRECTORY ${ENET_SRC_DIRECTORY}
-    COMMENT "Configuring enet build"
-)
-add_custom_target (
-    enet
-    COMMAND make "all"
-    WORKING_DIRECTORY ${ENET_SRC_DIRECTORY}
-    DEPENDS enet-config
-    COMMENT "Building ENET source code..."
-)
-
-add_custom_target (
-    clean-enet
-    COMMAND make "clean"
-    WORKING_DIRECTORY ${ENET_SRC_DIRECTORY}
-    COMMENT "Cleaning ENET source code"
-)
-####################################################################
-####################################################################
-
 set(
-    ASS_CUBE_SRCS_PATH "source/src"
+    ASS_CUBE_SRCS_PATH "src"
 )
+
 set(
     CLIENT_SRCS
         ${ASS_CUBE_SRCS_PATH}/crypto.cpp
@@ -114,13 +82,13 @@ add_executable(
     ${SERVER_SRCS}
 )
 
-target_include_directories(client PUBLIC source/src source/src/bot ${SDL_INCLUDE_DIR})
+target_include_directories(client PUBLIC src src/bot ${SDL_INCLUDE_DIR})
 target_compile_options(client PUBLIC -Wall -fomit-frame-pointer -fsigned-char )
 target_compile_definitions(client PUBLIC _GNU_SOURCE=1 _REENTRANT)
 target_link_libraries(client PUBLIC -lenet -lX11 ${SDL_LIBRARY} -lSDL_image -lz -lGL -lopenal -lvorbisfile -lcurl)
 
 
-target_include_directories(server PUBLIC source source/src source/src/bot)
+target_include_directories(server PUBLIC src src/bot)
 target_compile_definitions(server PUBLIC STANDALONE)
 target_compile_options(server PUBLIC -g -O3 -Wall -fomit-frame-pointer -fsigned-char )
 target_link_libraries(server PUBLIC -lenet -lz)
