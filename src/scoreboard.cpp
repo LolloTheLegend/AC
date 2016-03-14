@@ -2,6 +2,7 @@
 
 #include "scoreboard.h"
 #include "cube.h"
+
 #define SCORERATIO(F,D) (float)(F >= 0 ? F : 0) / (float)(D > 0 ? D : 1)
 
 void *scoremenu = NULL;

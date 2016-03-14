@@ -1,6 +1,6 @@
 // world.cpp: core map management stuff
 
-#include "../src/cube.h"
+#include "cube.h"
 #include "bot/bot.h"
 
 sqr *world = NULL;

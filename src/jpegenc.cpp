@@ -1,5 +1,4 @@
-#include "../src/jpegenc.h"
-
+#include "jpegenc.h"
 #include <string.h>
 #include <stdlib.h>
 

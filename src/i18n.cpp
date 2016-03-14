@@ -1,8 +1,7 @@
 // internationalization and localization
 
 #include <locale.h>
-
-#include "../src/cube.h"
+#include "cube.h"
 
 // TODO: Lollo fix this utter crap
 SVARFP(lang, "en", filterlang(lang, lang));

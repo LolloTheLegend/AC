@@ -1,6 +1,6 @@
 // worldocull.cpp: occlusion map and occlusion test
 
-#include "../src/cube.h"
+#include "cube.h"
 
 #define NUMRAYBITS 9
 #define NUMRAYS (1 << NUMRAYBITS)

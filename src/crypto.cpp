@@ -1,7 +1,4 @@
 #include "crypto.h"
-
-#include "cube.h"
-#include "cube.h"
 #include "cube.h"
 
 ///////////////////////// cryptography /////////////////////////////////

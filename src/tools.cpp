@@ -1,6 +1,6 @@
 // implementation of generic tools
 
-#include "../src/cube.h"
+#include "cube.h"
 
 const char *timestring ( bool local, const char *fmt )
 {
